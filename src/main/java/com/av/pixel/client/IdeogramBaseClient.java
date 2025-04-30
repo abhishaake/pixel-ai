@@ -4,6 +4,7 @@ import com.av.pixel.exception.IdeogramException;
 import com.av.pixel.exception.IdeogramUnprocessableEntityException;
 import com.av.pixel.response.ideogram.BaseResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -12,22 +13,17 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.converter.HttpMessageNotReadableException;
-import org.springframework.http.converter.HttpMessageNotWritableException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
-import org.springframework.web.client.ResourceAccessException;
-import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.UnknownHttpStatusCodeException;
-
-import javax.net.ssl.SSLException;
-import java.net.HttpRetryException;
 import java.util.List;
 import java.util.Objects;
 
 @Slf4j
 public class IdeogramBaseClient {
+
+    @Value("${ideogram.api.key}")
+    private String API_KEY;
 
     public <T> List<T> exchange(RestTemplate restTemplate, String url, HttpMethod httpMethod, Object requestBody, HttpHeaders httpHeaders, ParameterizedTypeReference<BaseResponse<T>> type){
         if (Objects.isNull(httpHeaders)) {
@@ -56,6 +52,7 @@ public class IdeogramBaseClient {
 
     public HttpHeaders getDefaultHeaders() {
         HttpHeaders httpHeaders = new HttpHeaders();
+        httpHeaders.set("Api-Key", API_KEY);
         httpHeaders.setAccept(List.of(MediaType.APPLICATION_JSON));
         return httpHeaders;
     }
