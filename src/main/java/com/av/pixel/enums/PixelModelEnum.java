@@ -48,7 +48,7 @@ public enum PixelModelEnum {
             return null;
         }
         for (PixelModelEnum modelEnum : PixelModelEnum.values()) {
-            if (modelEnum.value.equalsIgnoreCase(name)) {
+            if (modelEnum.name().equalsIgnoreCase(name)) {
                 return modelEnum;
             }
         }

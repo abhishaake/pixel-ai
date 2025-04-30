@@ -30,9 +30,4 @@ public class GenerationsDTO {
     boolean selfLike;
     String colorPalette;
     String aspectRatio;
-
-    public String getStyle () {
-        ImageStyleEnum styleEnum = ImageStyleEnum.getEnumByName(this.style);
-        return styleEnum.getValue();
-    }
 }
