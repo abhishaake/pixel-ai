@@ -21,13 +21,13 @@ public enum ColorPaletteEnum {
 
     public static ColorPaletteEnum getEnumByName (String name) {
         if (StringUtils.isEmpty(name)) {
-            return AUTO;
+            return null;
         }
         for (ColorPaletteEnum paletteEnum : ColorPaletteEnum.values()) {
             if (paletteEnum.name().equalsIgnoreCase(name)) {
                 return paletteEnum;
             }
         }
-        return AUTO;
+        return null;
     }
 }

@@ -66,7 +66,7 @@ public class Validator {
             return;
         }
         ColorPaletteEnum colorPaletteEnum = ColorPaletteEnum.getEnumByName(generateRequest.getColorPalette());
-        generateRequest.setColorPalette(colorPaletteEnum.name());
+        generateRequest.setColorPalette(Objects.isNull(colorPaletteEnum) ? null : colorPaletteEnum.getValue());
     }
 
 
