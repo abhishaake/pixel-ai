@@ -14,6 +14,7 @@ import com.av.pixel.enums.IdeogramModelEnum;
 import com.av.pixel.enums.ImageActionEnum;
 import com.av.pixel.enums.ImagePrivacyEnum;
 import com.av.pixel.enums.ImageRenderOptionEnum;
+import com.av.pixel.enums.ImageStyleEnum;
 import com.av.pixel.enums.OrderTypeEnum;
 import com.av.pixel.enums.PixelModelEnum;
 import com.av.pixel.exception.Error;
@@ -192,10 +193,7 @@ public class GenerationsServiceImpl implements GenerationsService {
         }
 
        if (!CollectionUtils.isEmpty(generationsFilterRequest.getStyles())) {
-           generationsFilterRequest.setStyles(generationsFilterRequest.getStyles()
-                   .stream()
-                   .map(String::toUpperCase)
-                   .collect(Collectors.toList()));
+           generationsFilterRequest.setStyles(ImageStyleEnum.getEnumsForFilter(generationsFilterRequest.getStyles()));
        }
 
         Page<Generations> generationsPage = findByFilters(generationsFilterRequest.getUserCodes(),

@@ -3,6 +3,12 @@ package com.av.pixel.enums;
 import io.micrometer.common.util.StringUtils;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import org.checkerframework.checker.units.qual.A;
+import org.springframework.util.CollectionUtils;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 @AllArgsConstructor
 public enum ImageStyleEnum {
@@ -38,5 +44,20 @@ public enum ImageStyleEnum {
             }
         }
         return AUTO;
+    }
+
+    public static List<String> getEnumsForFilter (List<String> list) {
+        if (CollectionUtils.isEmpty(list)) {
+            return Collections.emptyList();
+        }
+        List<String> finalList = new ArrayList<>();
+        for(String str : list) {
+            for (ImageStyleEnum styleEnum : ImageStyleEnum.values()) {
+                if (styleEnum.value.equalsIgnoreCase(str) || styleEnum.name().equalsIgnoreCase(str)) {
+                    finalList.add(styleEnum.name());
+                }
+            }
+        }
+        return finalList;
     }
 }
