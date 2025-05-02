@@ -51,7 +51,7 @@ public class NotificationServiceImpl implements NotificationService {
             NotificationDTO notificationDTO2 = new NotificationDTO(getCreditNotification(creditTemplate.get().getTemplate(), tokens));
             notifications.add(notificationDTO2);
         }
-        notifications.add(new NotificationDTO(policyTemplate.get().getTemplate()));
+        notifications.add(new NotificationDTO(getWelcomeNotification(policyTemplate.get().getTemplate())));
         createOrUpdateNotification(userCode, notifications);
     }
 
@@ -153,6 +153,7 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     private String getPaymentSuccessNotification (String template, Integer tokens) {
+        template = template.replaceAll("<<dateTime>>",getFormattedDate());
         return template.replaceAll("<<tokens>>", String.valueOf(tokens));
     }
 }
