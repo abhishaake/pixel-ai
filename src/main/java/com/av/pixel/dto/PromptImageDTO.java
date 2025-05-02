@@ -11,4 +11,5 @@ public class PromptImageDTO {
     String url;
     String magicPrompt;
     boolean safeImage;
+    String style;
 }

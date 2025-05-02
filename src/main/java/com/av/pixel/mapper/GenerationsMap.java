@@ -88,7 +88,8 @@ public class GenerationsMap {
                 .setImageId(promptImage.getImageId())
                 .setMagicPrompt(promptImage.getMagicPrompt())
                 .setUrl(promptImage.getUrl())
-                .setSafeImage(promptImage.isSafeImage());
+                .setSafeImage(promptImage.isSafeImage())
+                .setStyle(ImageStyleEnum.getEnumByName(promptImage.getStyle()).getValue());
     }
 
     public static PromptImage toPromptImage(ImageResponse imageResponse, int index) {
