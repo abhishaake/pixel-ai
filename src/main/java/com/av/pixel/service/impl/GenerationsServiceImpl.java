@@ -140,13 +140,12 @@ public class GenerationsServiceImpl implements GenerationsService {
 
 
     private List<ImageResponse> generateImage (ImageRequest imageRequest, String userCode) {
+        List<ImageResponse> res = null;
         try {
             if (adminConfigService.isIdeogramClientDisabled(userCode)) {
                 return generationHelper.generateImages(imageRequest);
             }
-            List<ImageResponse> res = ideogramClient.generateImages(imageRequest);
-            uploadToS3(res, userCode);
-            return res;
+            res = ideogramClient.generateImages(imageRequest);
         } catch (IdeogramUnprocessableEntityException e) {
             throw new Error(e.getError());
         }
@@ -155,6 +154,14 @@ public class GenerationsServiceImpl implements GenerationsService {
         } catch (Exception e) {
             log.error("[CRITICAL] generate Image error : {}, for req {} ", e.getMessage(), imageRequest, e);
             return null;
+        }
+        try {
+            uploadToS3(res, userCode);
+            return res;
+        }
+        catch (Exception e){
+            log.error("uploading error", e);
+            return res;
         }
     }
 
