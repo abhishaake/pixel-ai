@@ -1,12 +1,17 @@
 package com.av.pixel.controller;
 
 import com.av.pixel.exception.Error;
+import com.av.pixel.helper.DateUtil;
 import com.av.pixel.response.base.Response;
+import com.av.pixel.response.ideogram.ImageResponse;
 import com.av.pixel.scheduler.CacheScheduler;
 import com.av.pixel.scheduler.PaymentScheduler;
 import com.av.pixel.service.AdminConfigService;
+import com.av.pixel.service.ImageCompressionService;
 import com.av.pixel.service.ModelPricingService;
 import com.av.pixel.service.S3Service;
+import com.av.pixel.service.impl.GenerationsServiceImpl;
+import com.av.pixel.service.impl.ImageCompressionServiceImpl;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
@@ -14,12 +19,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.net.http.HttpResponse;
 
 import static com.av.pixel.mapper.ResponseMapper.response;
 
@@ -36,6 +43,10 @@ public class UtilityController {
     PaymentScheduler paymentScheduler;
 
     AdminConfigService adminConfigService;
+
+    GenerationsServiceImpl generationsService;
+
+    ImageCompressionServiceImpl imageCompressionService;
 
     @GetMapping("/health")
     public Response<String> health() {
@@ -98,6 +109,20 @@ public class UtilityController {
     @PostMapping("/load-admin-config")
     public Response<String> loadAdminConfig () {
         adminConfigService.loadAdminConfig();
+        return new Response<>(HttpStatus.OK, "success");
+    }
+
+    @PostMapping("/upload")
+    public Response<ImageResponse> upload (@RequestBody ImageResponse imageResponse, @RequestParam String userCode) {
+        return new Response<>(generationsService.uploadToS3(imageResponse, userCode, DateUtil.currentTimeMillis(), 0));
+    }
+
+    @GetMapping("/compression-test")
+    public Response<String> compressionTest (@RequestParam String url,
+                                             @RequestParam float scale,
+                                             @RequestParam float quality) throws IOException {
+        HttpResponse<byte[]> res = s3Service.downloadImage(url);
+        imageCompressionService.test(res.body(), scale, quality);
         return new Response<>(HttpStatus.OK, "success");
     }
 }

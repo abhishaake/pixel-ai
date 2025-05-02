@@ -122,7 +122,7 @@ public class NotificationServiceImpl implements NotificationService {
     public void sendLikeNotification (String genId, String likedBy) {
         Generations generation = generationHelper.getById(genId);
         String userCode = generation.getUserCode();
-        String imgUrl = generation.getImages().get(0).getUrl();
+        String imgUrl = generation.getImages().get(0).getThumbnail();
         User user = userRepository.findByCodeAndDeletedFalse(likedBy);
         if (Objects.nonNull(user)) {
             addLikeNotification(userCode, user.getFirstName(), imgUrl);

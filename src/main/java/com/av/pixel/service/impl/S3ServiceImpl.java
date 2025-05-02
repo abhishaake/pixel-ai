@@ -49,6 +49,41 @@ public class S3ServiceImpl implements S3Service {
         return String.format("https://%s.s3.%s.amazonaws.com/%s", bucketName, region, objectKey);
     }
 
+    public HttpResponse<byte[]> downloadImage (String imageUrl) {
+        try {
+            HttpClient client = HttpClient.newBuilder()
+                    .followRedirects(HttpClient.Redirect.NORMAL)
+                    .build();
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(imageUrl))
+                    .GET()
+                    .build();
+
+            HttpResponse<byte[]> response = client.send(
+                    request,
+                    HttpResponse.BodyHandlers.ofByteArray()
+            );
+
+            if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                return response;
+            } else {
+                throw new RuntimeException("Failed to download image, status code: " + response.statusCode());
+            }
+        } catch (IOException | InterruptedException e) {
+            throw new RuntimeException("Failed to download image", e);
+        }
+    }
+
+    public String uploadToS3 (byte[] imageByte, String fileName) {
+        try {
+            return uploadFile(fileName, imageByte);
+        }
+        catch (Exception e){
+            throw new RuntimeException("Failed to upload image", e);
+        }
+    }
+
     public String downloadImageAndUploadToS3(String imageUrl, String fileName) {
         try {
             HttpClient client = HttpClient.newBuilder()
@@ -77,7 +112,20 @@ public class S3ServiceImpl implements S3Service {
         }
     }
 
-    private String getImageExtension (String fileName, HttpResponse<byte[]> response) {
+    public String getImageExtensionName (HttpResponse<byte[]> response) {
+        String contentType = response.headers().firstValue("Content-Type").orElse("application/octet-stream");
+        String extension;
+        if (contentType.equalsIgnoreCase("image/png")) {
+            extension = ".png";
+        } else if (contentType.equalsIgnoreCase("image/jpeg") || contentType.equalsIgnoreCase("image/jpg")) {
+            extension = ".jpg";
+        } else {
+            extension = ".png";
+        }
+        return extension;
+    }
+
+    public String getImageExtension (String fileName, HttpResponse<byte[]> response) {
         if (fileName.contains(".png") || fileName.contains(".jpg") || fileName.contains(".jpeg")) {
             return fileName;
         }

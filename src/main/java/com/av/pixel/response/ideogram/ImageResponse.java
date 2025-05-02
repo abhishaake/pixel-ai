@@ -16,6 +16,8 @@ public class ImageResponse {
 
     String url;
 
+    String thumbnailUrl;
+
     @JsonProperty("style_type")
     String styleType;
 }

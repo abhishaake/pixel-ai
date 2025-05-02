@@ -72,7 +72,9 @@ public class GenerationHelper {
             imageResponse.setResolution("1024x1024");
             imageResponse.setIsImageSafe(true);
             imageResponse.setSeed(Objects.isNull(imageRequest.getSeed()) ? 1234 : imageRequest.getSeed());
-            imageResponse.setUrl(ITEMS.get(RANDOM.nextInt(ITEMS.size())));
+            String url = ITEMS.get(RANDOM.nextInt(ITEMS.size()));
+            imageResponse.setUrl(url);
+            imageResponse.setThumbnailUrl(url);
             imageResponse.setStyleType(Objects.isNull(imageRequest.getStyleType()) ? null : imageRequest.getStyleType().name());
             res.add(imageResponse);
         }

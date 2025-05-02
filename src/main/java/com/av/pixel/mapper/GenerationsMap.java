@@ -88,6 +88,7 @@ public class GenerationsMap {
                 .setImageId(promptImage.getImageId())
                 .setMagicPrompt(promptImage.getMagicPrompt())
                 .setUrl(promptImage.getUrl())
+                .setThumbnail(promptImage.getThumbnail())
                 .setSafeImage(promptImage.isSafeImage())
                 .setStyle(ImageStyleEnum.getEnumByName(promptImage.getStyle()).getValue());
     }
@@ -101,7 +102,8 @@ public class GenerationsMap {
                 .setMagicPrompt(imageResponse.getPrompt())
                 .setUrl(imageResponse.getUrl())
                 .setSafeImage(imageResponse.getIsImageSafe())
-                .setStyle(imageResponse.getStyleType());
+                .setStyle(imageResponse.getStyleType())
+                .setThumbnail(imageResponse.getThumbnailUrl());
     }
 
     public static List<PromptImage> toPromptImageList(List<ImageResponse> imageResponse) {

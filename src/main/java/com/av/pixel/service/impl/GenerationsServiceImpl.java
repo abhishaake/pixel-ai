@@ -12,6 +12,7 @@ import com.av.pixel.dto.UserCreditDTO;
 import com.av.pixel.dto.UserDTO;
 import com.av.pixel.enums.IdeogramModelEnum;
 import com.av.pixel.enums.ImageActionEnum;
+import com.av.pixel.enums.ImageCompressionConfig;
 import com.av.pixel.enums.ImagePrivacyEnum;
 import com.av.pixel.enums.ImageRenderOptionEnum;
 import com.av.pixel.enums.ImageStyleEnum;
@@ -40,6 +41,7 @@ import com.av.pixel.response.ModelConfigResponse;
 import com.av.pixel.response.ideogram.ImageResponse;
 import com.av.pixel.service.AdminConfigService;
 import com.av.pixel.service.GenerationsService;
+import com.av.pixel.service.ImageCompressionService;
 import com.av.pixel.service.LikeGenerationService;
 import com.av.pixel.service.S3Service;
 import com.av.pixel.service.UserCreditService;
@@ -59,6 +61,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
+import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -81,6 +84,7 @@ public class GenerationsServiceImpl implements GenerationsService {
     private final UserService userService;
     private final AdminConfigService adminConfigService;
     private final S3Service s3Service;
+    private final ImageCompressionService imageCompressionService;
 
     @Override
     public GenerationsDTO generate (UserDTO userDTO, GenerateRequest generateRequest) {
@@ -163,8 +167,7 @@ public class GenerationsServiceImpl implements GenerationsService {
         for(ImageResponse imageResponse : res) {
             try {
                 if (imageResponse.getIsImageSafe()) {
-                    String url = s3Service.downloadImageAndUploadToS3(imageResponse.getUrl(), getFileName(userCode, epoch + idx));
-                    imageResponse.setUrl(url);
+                    uploadToS3(imageResponse, userCode, epoch, idx);
                     idx++;
                 }
             }
@@ -173,6 +176,29 @@ public class GenerationsServiceImpl implements GenerationsService {
             }
         }
     }
+
+    public ImageResponse uploadToS3 (ImageResponse imageResponse, String userCode, Long epoch, int idx) {
+        HttpResponse<byte[]> imageRes = s3Service.downloadImage(imageResponse.getUrl());
+        String fileName = getFileName(userCode, epoch + idx);
+        String extension = s3Service.getImageExtensionName(imageRes);
+        String url = s3Service.uploadToS3(imageRes.body(), fileName + extension);
+        imageResponse.setUrl(url);
+
+        double imageSize = imageCompressionService.getImageSize(imageRes.body());
+        if (imageCompressionService.isCompressionRequired(imageSize)) {
+            ImageCompressionConfig config = imageCompressionService.getRequiredCompression(imageSize);
+            if (Objects.isNull(config)) {
+                imageResponse.setThumbnailUrl(url);
+            } else {
+                byte[] compressedImage = imageCompressionService.getCompressedImage(imageRes.body(), config);
+                imageResponse.setThumbnailUrl(s3Service.uploadToS3(compressedImage, fileName + "_thumbnail"+ extension));
+            }
+        } else {
+            imageResponse.setThumbnailUrl(url);
+        }
+        return imageResponse;
+    }
+
 
     private String getFileName (String userCode, long epoch) {
         return userCode + "_" + epoch;

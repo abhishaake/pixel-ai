@@ -9,6 +9,7 @@ import lombok.experimental.Accessors;
 public class PromptImageDTO {
     int imageId;
     String url;
+    String thumbnail;
     String magicPrompt;
     boolean safeImage;
     String style;
