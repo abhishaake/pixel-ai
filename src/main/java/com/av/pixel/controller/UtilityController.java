@@ -118,11 +118,13 @@ public class UtilityController {
     }
 
     @GetMapping("/compression-test")
-    public Response<String> compressionTest (@RequestParam String url,
+    public ResponseEntity<byte[]> compressionTest (@RequestParam String url,
                                              @RequestParam float scale,
                                              @RequestParam float quality) throws IOException {
         HttpResponse<byte[]> res = s3Service.downloadImage(url);
-        imageCompressionService.test(res.body(), scale, quality);
-        return new Response<>(HttpStatus.OK, "success");
+        HttpHeaders headers = new HttpHeaders();
+        Long ep = DateUtil.currentTimeMillis();
+        headers.setContentDispositionFormData("attachment", ep + ".png");
+        return new ResponseEntity<>(imageCompressionService.test(res.body(), scale, quality), headers, HttpStatus.OK);
     }
 }

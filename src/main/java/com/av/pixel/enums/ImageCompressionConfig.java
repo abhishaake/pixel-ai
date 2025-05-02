@@ -7,17 +7,18 @@ import lombok.Getter;
 @Getter
 public enum ImageCompressionConfig {
 
-    KB_250(0.45f,0.9f),
-    KB_500(0.3f,0.9f),
-    KB_750(0.25f,0.9f),
-    KB_1000(0.19f,0.85f),
-    KB_1250(0.19f,0.85f),
-    KB_1500(0.19f,0.8f),
-    KB_1750(0.19f,0.8f),
-    KB_2000(0.19f,0.75f),
-    KB_2500(0.19f,0.8f),
-    KB_4000(0.09f,0.8f),
-    KB_10000(0.07f,0.8f);
+    KB_250(0.55f,0.95f),
+    KB_500(0.38f,0.9f),
+    KB_750(0.31f,0.9f),
+    KB_1000(0.255f,0.9f),
+    KB_1250(0.252f,0.9f),
+    KB_1500(0.251f,0.9f),
+    KB_1750(0.25f,0.9f),
+    KB_2000(0.24f,0.9f),
+    KB_2500(0.21f,0.9f),
+    KB_4000(0.13f,0.9f),
+    KB_7000(0.09f,0.9f),
+    KB_10000(0.07f,0.9f);
 
 
     private final float scale;
@@ -54,8 +55,11 @@ public enum ImageCompressionConfig {
         if (size < 4000) {
             return KB_2500;
         }
-        if (size < 10000) {
+        if (size < 7000) {
             return KB_4000;
+        }
+        if (size < 10000) {
+            return KB_7000;
         }
         return KB_10000;
     }

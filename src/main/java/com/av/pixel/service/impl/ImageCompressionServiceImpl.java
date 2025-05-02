@@ -67,11 +67,12 @@ public class ImageCompressionServiceImpl implements ImageCompressionService {
     }
 
 
-    public void test (byte[] imageBytes, float scale, float quality) throws IOException {
+    public byte[] test (byte[] imageBytes, float scale, float quality) throws IOException {
         double imageSize = getImageSize(imageBytes);
         byte[] compressedImage = compressImage(imageBytes, scale, quality);
         double newImageSize = getImageSize(compressedImage);
 
         log.info("original size: {}, compressed size: {}, scale :{} , quality: {}", imageSize, newImageSize, scale, quality);
+        return compressedImage;
     }
 }
