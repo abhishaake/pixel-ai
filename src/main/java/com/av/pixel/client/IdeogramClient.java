@@ -9,6 +9,7 @@ import com.av.pixel.service.impl.EmailService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 import java.util.List;
@@ -23,7 +24,7 @@ public class IdeogramClient extends IdeogramBaseClient{
     public IdeogramClient (RestTemplate restTemplate, EmailService emailService) {
         super(emailService);
         this.restTemplate = restTemplate;
-        this.circuitBreaker = new IdeogramCircuitBreaker(2, 300000);
+        this.circuitBreaker = new IdeogramCircuitBreaker(2, 180000);
     }
 
     private static final String BASE_URL = "https://api.ideogram.ai";

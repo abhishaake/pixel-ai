@@ -19,24 +19,20 @@ public class IdeogramCircuitBreaker {
     }
 
     public <T> T execute(Supplier<T> action, Supplier<T> fallback) {
-        // Check if circuit is open
         if (failures.get() >= threshold) {
             long timeSinceLastFailure = System.currentTimeMillis() - lastFailureTime.get();
             if (timeSinceLastFailure < resetTimeoutMs) {
+                lastFailureTime.set(System.currentTimeMillis());
                 return fallback.get(); // Circuit open, use fallback
             }
-            // Attempt reset after timeout
             failures.set(0);
         }
 
-        // Circuit closed or attempting reset, try the call
         try {
             T result = action.get();
-            // Success, reset failures
             failures.set(0);
             return result;
         } catch (IdeogramServerException e) {
-            // Record failure
             failures.incrementAndGet();
             lastFailureTime.set(System.currentTimeMillis());
             return fallback.get();

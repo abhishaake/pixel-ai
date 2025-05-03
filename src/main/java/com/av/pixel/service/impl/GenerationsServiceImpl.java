@@ -113,7 +113,7 @@ public class GenerationsServiceImpl implements GenerationsService {
 
             ImageRequest imageRequest = ImageMap.validateAndGetImageRequest(generateRequest);
 
-            List<ImageResponse> imageResponses =    generateImage(imageRequest, userDTO.getCode());
+            List<ImageResponse> imageResponses = generateImage(imageRequest, userDTO.getCode());
 
             if (Objects.isNull(imageResponses)) {
                 throw new Error("Some error occurred, please try again");
