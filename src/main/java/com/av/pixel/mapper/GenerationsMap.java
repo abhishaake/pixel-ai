@@ -138,7 +138,8 @@ public class GenerationsMap {
                 .setPrivateImage(privateImage)
                 .setStyle(style)
                 .setColorPalette(colorPalette)
-                .setAspectRatio(Objects.isNull(aspectRatio) ? "1:1" : aspectRatio.getValue());
+                .setAspectRatio(Objects.isNull(aspectRatio) ? "1:1" : aspectRatio.getValue())
+                .setEpoch(DateUtil.currentTimeSec());
     }
 
     private static Long getSeed (List<ImageResponse> imageResponses) {
