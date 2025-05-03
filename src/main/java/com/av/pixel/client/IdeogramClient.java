@@ -4,22 +4,14 @@ import com.av.pixel.exception.IdeogramException;
 import com.av.pixel.helper.IdeogramCircuitBreaker;
 import com.av.pixel.request.ideogram.BaseRequest;
 import com.av.pixel.request.ideogram.ImageRequest;
-import com.av.pixel.response.ideogram.BaseResponse;
 import com.av.pixel.response.ideogram.ImageResponse;
-import lombok.AllArgsConstructor;
-import lombok.RequiredArgsConstructor;
+import com.av.pixel.service.impl.EmailService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
-
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
-import java.util.Random;
 
 @Component
 @Slf4j
@@ -28,7 +20,8 @@ public class IdeogramClient extends IdeogramBaseClient{
     final RestTemplate restTemplate;
     final IdeogramCircuitBreaker circuitBreaker;
 
-    public IdeogramClient (RestTemplate restTemplate) {
+    public IdeogramClient (RestTemplate restTemplate, EmailService emailService) {
+        super(emailService);
         this.restTemplate = restTemplate;
         this.circuitBreaker = new IdeogramCircuitBreaker(2, 300000);
     }

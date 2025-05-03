@@ -1,5 +1,6 @@
 package com.av.pixel.helper;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -18,6 +19,17 @@ public class TransformUtil {
         } catch (Exception e) {
             log.error(
                     "Error in fromJson(), jsonString: " + jsonString + " ; Exception: " + e.getMessage(), e);
+        }
+        return null;
+    }
+
+    public static String toJson(Object obj) {
+        try {
+            if (obj != null) {
+                return objectMapper.writeValueAsString(obj);
+            }
+        } catch (JsonProcessingException e) {
+            log.error("Error in toJson(), obj: " + obj + " ; Exception: " + e.getMessage(), e);
         }
         return null;
     }

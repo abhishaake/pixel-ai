@@ -1,7 +1,6 @@
 package com.av.pixel.controller;
 
 import com.av.pixel.dao.Generations;
-import com.av.pixel.dao.PromptImage;
 import com.av.pixel.enums.ImageCompressionConfig;
 import com.av.pixel.exception.Error;
 import com.av.pixel.helper.DateUtil;
@@ -11,9 +10,8 @@ import com.av.pixel.response.ideogram.ImageResponse;
 import com.av.pixel.scheduler.CacheScheduler;
 import com.av.pixel.scheduler.PaymentScheduler;
 import com.av.pixel.service.AdminConfigService;
-import com.av.pixel.service.ImageCompressionService;
-import com.av.pixel.service.ModelPricingService;
 import com.av.pixel.service.S3Service;
+import com.av.pixel.service.impl.EmailService;
 import com.av.pixel.service.impl.GenerationsServiceImpl;
 import com.av.pixel.service.impl.ImageCompressionServiceImpl;
 import lombok.AllArgsConstructor;
@@ -29,7 +27,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.awt.*;
 import java.io.IOException;
 import java.net.http.HttpResponse;
 import java.util.HashMap;
@@ -57,6 +54,8 @@ public class UtilityController {
     ImageCompressionServiceImpl imageCompressionService;
 
     GenerationsRepository generationsRepository;
+
+    EmailService emailService;
 
     @GetMapping("/health")
     public Response<String> health() {
@@ -171,5 +170,11 @@ public class UtilityController {
         } catch (IOException e) {
             return new Response<>(null);
         }
+    }
+
+    @PostMapping("/send-mail")
+    public Response<?> sendMail (@RequestParam String body) {
+        emailService.sendErrorMail(body);
+        return new Response<>("success");
     }
 }
