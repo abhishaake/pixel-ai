@@ -18,7 +18,7 @@ import java.util.Objects;
 public class ImageCompressionServiceImpl implements ImageCompressionService {
 
     private static final double KB = 1024;
-    private static final double SIZE_THRESHOLD_KB = 250;
+    private static final double SIZE_THRESHOLD_KB = 500;
 
     @Override
     public double getImageSize (byte[] imageBytes) {

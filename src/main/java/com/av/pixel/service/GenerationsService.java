@@ -23,4 +23,6 @@ public interface GenerationsService {
 
     String performAction (UserDTO userDTO, ImageActionRequest imageActionRequest);
 
+    String addView (UserDTO userDTO, ImageActionRequest imageActionRequest);
+
 }

@@ -26,7 +26,6 @@ public class ImageMap {
         }
 
         MagicPromptOptionEnum magicPromptOption = MagicPromptOptionEnum.getEnumByName(generateRequest.getMagicPromptOption());
-        ResolutionEnum resolution = ResolutionEnum.getEnumByName(generateRequest.getResolution());
         ImageStyleEnum imageStyle = ImageStyleEnum.getEnumByValue(generateRequest.getStyleType());
 
         return new ImageRequest()
@@ -36,10 +35,10 @@ public class ImageMap {
                 .setMagicPromptOption(magicPromptOption)
                 .setPrompt(generateRequest.getPrompt())
                 .setSeed(generateRequest.getSeed())
-                .setNegativePrompt(generateRequest.getNegativePrompt())
+                .setNegativePrompt(model.isNegativePromptEnabled() ? generateRequest.getNegativePrompt() : null)
                 .setResolution(null)
-                .setStyleType(imageStyle)
-                .setColorPalette(Objects.nonNull(generateRequest.getColorPalette()) ? new ColorPalette().setName(generateRequest.getColorPalette()) : null);
+                .setStyleType(model.isStyleEnabled() ? imageStyle : null)
+                .setColorPalette((model.isColorPaletteEnabled() && Objects.nonNull(generateRequest.getColorPalette())) ? new ColorPalette().setName(generateRequest.getColorPalette()) : null);
     }
 
 }

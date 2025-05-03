@@ -1,6 +1,7 @@
 package com.av.pixel.client;
 
 import com.av.pixel.exception.IdeogramException;
+import com.av.pixel.exception.IdeogramServerException;
 import com.av.pixel.exception.IdeogramUnprocessableEntityException;
 import com.av.pixel.response.ideogram.BaseResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -72,10 +73,10 @@ public class IdeogramBaseClient {
         } catch (HttpServerErrorException e) {
             String responseBody = e.getResponseBodyAsString();
             printException(url, e.getStatusCode(), e.getStatusText(), responseBody, e.getMessage());
-            throw new IdeogramException(HttpStatus.valueOf(e.getStatusCode().value()), null, e.getMessage());
+            throw new IdeogramServerException(HttpStatus.valueOf(e.getStatusCode().value()), null, e.getMessage());
         } catch (Exception e) {
             printException(url, null, null, null, e.getMessage());
-            throw new IdeogramException(HttpStatus.INTERNAL_SERVER_ERROR, null, e.getMessage());
+            throw new IdeogramServerException(HttpStatus.INTERNAL_SERVER_ERROR, null, e.getMessage());
         }
     }
 

@@ -1,7 +1,11 @@
 package com.av.pixel.controller;
 
+import com.av.pixel.dao.Generations;
+import com.av.pixel.dao.PromptImage;
+import com.av.pixel.enums.ImageCompressionConfig;
 import com.av.pixel.exception.Error;
 import com.av.pixel.helper.DateUtil;
+import com.av.pixel.repository.GenerationsRepository;
 import com.av.pixel.response.base.Response;
 import com.av.pixel.response.ideogram.ImageResponse;
 import com.av.pixel.scheduler.CacheScheduler;
@@ -25,8 +29,12 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.awt.*;
 import java.io.IOException;
 import java.net.http.HttpResponse;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
 
 import static com.av.pixel.mapper.ResponseMapper.response;
 
@@ -47,6 +55,8 @@ public class UtilityController {
     GenerationsServiceImpl generationsService;
 
     ImageCompressionServiceImpl imageCompressionService;
+
+    GenerationsRepository generationsRepository;
 
     @GetMapping("/health")
     public Response<String> health() {
@@ -126,5 +136,40 @@ public class UtilityController {
         Long ep = DateUtil.currentTimeMillis();
         headers.setContentDispositionFormData("attachment", ep + ".png");
         return new ResponseEntity<>(imageCompressionService.test(res.body(), scale, quality), headers, HttpStatus.OK);
+    }
+
+    @PostMapping("/add-gen")
+    public Response<String> addGen (@RequestBody Generations generations) {
+        generations.setEpoch(DateUtil.currentTimeSec());
+        generations.setLikes(0l);
+        generations = generationsRepository.save(generations);
+        log.info("saved : {}", generations.getId().toString());
+        return new Response<>("success");
+    }
+
+    @PostMapping("/uploadAndGet")
+    public Response<?> getImgeUrl (@RequestParam("file") MultipartFile file) {
+        try {
+            Long epoch = DateUtil.currentTimeSec();
+            String fileName = "P108" + "_" + epoch + ".png";
+            String fileUrl = s3Service.uploadFile(fileName, file.getBytes());
+            Map<String, String> map = new HashMap<>();
+            map.put("url", fileUrl);
+            double imageSize = imageCompressionService.getImageSize(file.getBytes());
+            log.info("img size : {}", imageSize);
+            if (imageCompressionService.isCompressionRequired(imageSize)) {
+                ImageCompressionConfig config = imageCompressionService.getRequiredCompression(imageSize);
+                if (Objects.isNull(config)) {
+                    return new Response<>(map);
+                } else {
+                    byte[] compressedImage = imageCompressionService.getCompressedImage(file.getBytes(), config);
+                    String thumbnailUrl = s3Service.uploadFile("P108" + "_" + epoch + "_thumbnail.png", compressedImage);
+                    map.put("url2", thumbnailUrl);
+                }
+            }
+            return new Response<>(map);
+        } catch (IOException e) {
+            return new Response<>(null);
+        }
     }
 }

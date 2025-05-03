@@ -42,7 +42,7 @@ import com.av.pixel.response.ideogram.ImageResponse;
 import com.av.pixel.service.AdminConfigService;
 import com.av.pixel.service.GenerationsService;
 import com.av.pixel.service.ImageCompressionService;
-import com.av.pixel.service.LikeGenerationService;
+import com.av.pixel.service.GenerationActionService;
 import com.av.pixel.service.S3Service;
 import com.av.pixel.service.UserCreditService;
 import com.av.pixel.service.UserService;
@@ -67,7 +67,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TreeSet;
-import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -79,7 +78,7 @@ public class GenerationsServiceImpl implements GenerationsService {
     private final ModelConfigRepository modelConfigRepository;
     private final IdeogramClient ideogramClient;
     private final GenerationHelper generationHelper;
-    private final LikeGenerationService likeGenerationService;
+    private final GenerationActionService generationActionService;
     private final RLock locker;
     private final UserService userService;
     private final AdminConfigService adminConfigService;
@@ -114,7 +113,7 @@ public class GenerationsServiceImpl implements GenerationsService {
 
             ImageRequest imageRequest = ImageMap.validateAndGetImageRequest(generateRequest);
 
-            List<ImageResponse> imageResponses = generateImage(imageRequest, userDTO.getCode());
+            List<ImageResponse> imageResponses =    generateImage(imageRequest, userDTO.getCode());
 
             if (Objects.isNull(imageResponses)) {
                 throw new Error("Some error occurred, please try again");
@@ -152,7 +151,6 @@ public class GenerationsServiceImpl implements GenerationsService {
         catch (IdeogramException e) {
             return null;
         } catch (Exception e) {
-            log.error("[CRITICAL] generate Image error : {}, for req {} ", e.getMessage(), imageRequest, e);
             return null;
         }
         try {
@@ -240,7 +238,7 @@ public class GenerationsServiceImpl implements GenerationsService {
         TreeSet<String> likedGenerations = null;
         if (Objects.nonNull(userDTO) && StringUtils.isNotEmpty(userDTO.getCode())) {
             List<String> genIds = generationsPage.getContent().stream().map(g -> g.getId().toString()).toList();
-            likedGenerations = likeGenerationService.getLikedGenerationsByUserCode(userDTO.getCode(), genIds);
+            likedGenerations = generationActionService.getLikedGenerationsByUserCode(userDTO.getCode(), genIds);
         }
         List<String> userCodes = generationsPage.getContent().stream().map(Generations::getUserCode).toList();
         Map<String, User> userMap = userService.getUserCodeVsUserMap(userCodes);
@@ -277,8 +275,11 @@ public class GenerationsServiceImpl implements GenerationsService {
 
         Query query = new Query();
 
-        if (Objects.nonNull(sortByRequest) && StringUtils.isNotEmpty(sortByRequest.getSortBy())) {
+        if (Objects.nonNull(sortByRequest) && StringUtils.isNotEmpty(sortByRequest.getSortBy())
+                && Objects.nonNull(sortByRequest.getSortDir())) {
             query.with(Sort.by(sortByRequest.getSortDir(), sortByRequest.getSortBy()));
+        } else {
+            query.with(Sort.by("DESC", "views"));
         }
 
         if (!criteriaList.isEmpty()) {
@@ -350,7 +351,7 @@ public class GenerationsServiceImpl implements GenerationsService {
     @Override
     public String performAction (UserDTO userDTO, ImageActionRequest imageActionRequest) {
         String key = "action_" + imageActionRequest.getGenerationId();
-        boolean locked = locker.tryLock(key, 1000);
+        boolean locked = locker.tryLock(key, 10);
 
         if (!locked) {
             return "success";
@@ -358,9 +359,9 @@ public class GenerationsServiceImpl implements GenerationsService {
         String res = "success";
         try {
             if (ImageActionEnum.LIKE.equals(imageActionRequest.getAction())) {
-                res = likeGenerationService.likeGeneration(userDTO.getCode(), imageActionRequest.getGenerationId());
+                res = generationActionService.likeGeneration(userDTO.getCode(), imageActionRequest.getGenerationId());
             } else if (ImageActionEnum.DISLIKE.equals(imageActionRequest.getAction())) {
-                res = likeGenerationService.disLikeGeneration(userDTO.getCode(), imageActionRequest.getGenerationId());
+                res = generationActionService.disLikeGeneration(userDTO.getCode(), imageActionRequest.getGenerationId());
             }
             return "success";
         } catch (Exception e) {
@@ -369,5 +370,13 @@ public class GenerationsServiceImpl implements GenerationsService {
             locker.unlock(key);
         }
         return res;
+    }
+
+    @Override
+    public String addView (UserDTO userDTO, ImageActionRequest imageActionRequest) {
+        if (ImageActionEnum.VIEW.equals(imageActionRequest.getAction())) {
+            return generationActionService.addView(imageActionRequest.getGenerationId());
+        }
+        return "success";
     }
 }

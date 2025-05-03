@@ -57,4 +57,10 @@ public class ImagesController {
     public ResponseEntity<Response<String>> performAction (UserDTO userDTO, @RequestBody ImageActionRequest imageActionRequest) {
         return response(imagesService.performAction(userDTO, imageActionRequest), HttpStatus.OK);
     }
+
+    @Authenticated
+    @PutMapping("/view")
+    public ResponseEntity<Response<String>> addView (UserDTO userDTO, @RequestBody ImageActionRequest imageActionRequest) {
+        return response(imagesService.addView(userDTO, imageActionRequest), HttpStatus.OK);
+    }
 }

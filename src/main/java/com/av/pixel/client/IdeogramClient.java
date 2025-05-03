@@ -1,5 +1,7 @@
 package com.av.pixel.client;
 
+import com.av.pixel.exception.IdeogramException;
+import com.av.pixel.helper.IdeogramCircuitBreaker;
 import com.av.pixel.request.ideogram.BaseRequest;
 import com.av.pixel.request.ideogram.ImageRequest;
 import com.av.pixel.response.ideogram.BaseResponse;
@@ -21,10 +23,15 @@ import java.util.Random;
 
 @Component
 @Slf4j
-@RequiredArgsConstructor
 public class IdeogramClient extends IdeogramBaseClient{
 
     final RestTemplate restTemplate;
+    final IdeogramCircuitBreaker circuitBreaker;
+
+    public IdeogramClient (RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
+        this.circuitBreaker = new IdeogramCircuitBreaker(2, 300000);
+    }
 
     private static final String BASE_URL = "https://api.ideogram.ai";
     private static final String GENERATE_IMAGE_URL = "/generate";
@@ -33,7 +40,14 @@ public class IdeogramClient extends IdeogramBaseClient{
 
         String url = BASE_URL + GENERATE_IMAGE_URL;
         BaseRequest baseRequest = new BaseRequest().setImageRequest(imageRequest);
-        return super.exchange(restTemplate, url, HttpMethod.POST, baseRequest, null, new ParameterizedTypeReference<>() {});
+
+        return circuitBreaker.execute(
+                () -> super.exchange(restTemplate, url, HttpMethod.POST, baseRequest, null, new ParameterizedTypeReference<>() {}),
+                this::generateImageFallback);
+    }
+
+    public List<ImageResponse> generateImageFallback () {
+        throw new IdeogramException();
     }
 
 }
