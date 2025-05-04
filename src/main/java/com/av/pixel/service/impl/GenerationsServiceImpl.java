@@ -180,6 +180,7 @@ public class GenerationsServiceImpl implements GenerationsService {
                 if (Boolean.FALSE.equals(res.get(i).getIsImageSafe())) {
                     unsafeImages++;
                     res.get(i).setUrl(IMAGE_UNSAFE_LOGO);
+                    res.get(i).setThumbnailUrl(IMAGE_UNSAFE_LOGO);
                 }
             }
         }
