@@ -308,7 +308,7 @@ public class GenerationsServiceImpl implements GenerationsService {
                 && Objects.nonNull(sortByRequest.getSortDir())) {
             query.with(Sort.by(sortByRequest.getSortDir(), sortByRequest.getSortBy()));
         } else {
-            query.with(Sort.by("DESC", "views"));
+            query.with(Sort.by(Sort.Direction.DESC, "views"));
         }
 
         if (!criteriaList.isEmpty()) {
