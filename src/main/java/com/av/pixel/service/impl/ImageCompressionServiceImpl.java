@@ -18,7 +18,7 @@ import java.util.Objects;
 public class ImageCompressionServiceImpl implements ImageCompressionService {
 
     private static final double KB = 1024;
-    private static final double SIZE_THRESHOLD_KB = 500;
+    private static final double SIZE_THRESHOLD_KB = 1000;
 
     @Override
     public double getImageSize (byte[] imageBytes) {
@@ -56,11 +56,12 @@ public class ImageCompressionServiceImpl implements ImageCompressionService {
     private byte[] compressImage(byte[] imageBytes, float scale, float quality) throws IOException {
         ByteArrayInputStream inputStream = new ByteArrayInputStream(imageBytes);
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        String ext = "PNG";
 
         Thumbnails.of(inputStream)
                 .scale(scale)
                 .outputQuality(quality)
-                .outputFormat("PNG")
+                .outputFormat(ext)
                 .toOutputStream(outputStream);
 
         return outputStream.toByteArray();
