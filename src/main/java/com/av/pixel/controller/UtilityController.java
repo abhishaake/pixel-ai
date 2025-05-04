@@ -8,6 +8,7 @@ import com.av.pixel.repository.GenerationsRepository;
 import com.av.pixel.response.base.Response;
 import com.av.pixel.response.ideogram.ImageResponse;
 import com.av.pixel.scheduler.CacheScheduler;
+import com.av.pixel.scheduler.ImageScheduler;
 import com.av.pixel.scheduler.PaymentScheduler;
 import com.av.pixel.service.AdminConfigService;
 import com.av.pixel.service.S3Service;
@@ -56,6 +57,8 @@ public class UtilityController {
     GenerationsRepository generationsRepository;
 
     EmailService emailService;
+
+    ImageScheduler imageScheduler;
 
     @GetMapping("/health")
     public Response<String> health() {
@@ -141,6 +144,7 @@ public class UtilityController {
     public Response<String> addGen (@RequestBody Generations generations) {
         generations.setEpoch(DateUtil.currentTimeSec());
         generations.setLikes(0l);
+        generations.setViews(1000L);
         generations = generationsRepository.save(generations);
         log.info("saved : {}", generations.getId().toString());
         return new Response<>("success");
@@ -175,6 +179,18 @@ public class UtilityController {
     @PostMapping("/send-mail")
     public Response<?> sendMail (@RequestParam String body) {
         emailService.sendErrorMail(body);
+        return new Response<>("success");
+    }
+
+    @GetMapping("/view-scheduler")
+    public Response<?> viewScheduler () {
+        imageScheduler.resetViews();
+        return new Response<>("success");
+    }
+
+    @PostMapping("/temp")
+    public Response<?> temp () {
+        imageScheduler.tempMethod();
         return new Response<>("success");
     }
 }

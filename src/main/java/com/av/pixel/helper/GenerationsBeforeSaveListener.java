@@ -17,6 +17,9 @@ public class GenerationsBeforeSaveListener extends AbstractMongoEventListener<Ge
         if (document.getLikes() == null) {
             document.setLikes(0L);
         }
+        if (document.getViews() == null) {
+            document.setViews(1000L);
+        }
         if (document.getCreated() == null) {
             document.setCreated(new Date());
         }

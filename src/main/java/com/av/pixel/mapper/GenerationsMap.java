@@ -132,6 +132,7 @@ public class GenerationsMap {
                 .setModel(model)
                 .setUserPrompt(prompt)
                 .setLikes(0L)
+                .setViews(1000L)
                 .setRenderOption(renderOption)
                 .setSeed(getSeed(imageResponses))
                 .setResolution(getResolution(imageResponses))
