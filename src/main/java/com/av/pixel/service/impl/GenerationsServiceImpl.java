@@ -63,6 +63,7 @@ import org.springframework.util.CollectionUtils;
 
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -84,6 +85,8 @@ public class GenerationsServiceImpl implements GenerationsService {
     private final AdminConfigService adminConfigService;
     private final S3Service s3Service;
     private final ImageCompressionService imageCompressionService;
+
+    private static final String IMAGE_UNSAFE_LOGO = "https://av-pixel.s3.ap-south-1.amazonaws.com/image_not_safe_logo.jpeg";
 
     @Override
     public GenerationsDTO generate (UserDTO userDTO, GenerateRequest generateRequest) {
@@ -153,6 +156,7 @@ public class GenerationsServiceImpl implements GenerationsService {
         } catch (Exception e) {
             return null;
         }
+        checkForSafeImages(res);
         try {
             uploadToS3(res, userCode);
             return res;
@@ -160,6 +164,30 @@ public class GenerationsServiceImpl implements GenerationsService {
         catch (Exception e){
             log.error("uploading error", e);
             return res;
+        }
+    }
+
+    private void checkForSafeImages (List<ImageResponse> res) {
+        if (CollectionUtils.isEmpty(res)) {
+            return;
+        }
+        int size = res.size();
+        int unsafeImages = 0;
+        try {
+            res.sort(Comparator.comparing(ImageResponse::getIsImageSafe).reversed());
+
+            for(int i=0;i<size;i++){
+                if (Boolean.FALSE.equals(res.get(i).getIsImageSafe())) {
+                    unsafeImages++;
+                    res.get(i).setUrl(IMAGE_UNSAFE_LOGO);
+                }
+            }
+        }
+        catch (Exception e) {
+            log.error("[CRITICAL] ", e);
+        }
+        if (unsafeImages==size) {
+            throw new IdeogramUnprocessableEntityException();
         }
     }
 
