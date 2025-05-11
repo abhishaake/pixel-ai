@@ -143,13 +143,18 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public void sendPaymentSuccessNotification (String userCode, Integer tokens) {
-        String likeTemplate = "PAYMENT_SUCCESS";
+        try {
+            String likeTemplate = "PAYMENT_SUCCESS";
 
-        NotificationTemplate notificationTemplate = notificationTemplatesRepository.findByType(likeTemplate);
+            NotificationTemplate notificationTemplate = notificationTemplatesRepository.findByType(likeTemplate);
 
-        NotificationDTO notificationDTO = new NotificationDTO(getPaymentSuccessNotification(notificationTemplate.getTemplate(), tokens));
+            NotificationDTO notificationDTO = new NotificationDTO(getPaymentSuccessNotification(notificationTemplate.getTemplate(), tokens));
 
-        createOrUpdateNotification(userCode, List.of(notificationDTO));
+            createOrUpdateNotification(userCode, List.of(notificationDTO));
+        }
+        catch (Exception e){
+            log.error("error in sendPaymentSuccessNotification {}", e.getMessage(), e);
+        }
     }
 
     private String getPaymentSuccessNotification (String template, Integer tokens) {

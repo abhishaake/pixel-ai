@@ -1,12 +1,16 @@
 package com.av.pixel.google;
 
 import com.av.pixel.enums.PurchaseStatusEnum;
+import com.av.pixel.helper.TransformUtil;
 import com.av.pixel.response.PaymentVerificationResponse;
 
 import com.av.pixel.google.ProductPurchase;
+import com.av.pixel.service.impl.EmailService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+
+import java.util.Arrays;
 
 @Service
 @Slf4j
@@ -14,6 +18,7 @@ import org.springframework.stereotype.Service;
 public class PurchaseProcessingService {
 
     GooglePlayService apiService;
+    EmailService emailService;
 
     public PaymentVerificationResponse processPurchase(String productId, String purchaseToken) {
         try {
@@ -58,6 +63,7 @@ public class PurchaseProcessingService {
             }
         } catch (Exception e) {
             log.error("[CRITICAL] error : {}", e.getMessage(), e);
+            emailService.sendPaymentErrorMail( "processPurchase error : " + e.getMessage(), TransformUtil.toJson( Arrays.stream(e.getStackTrace()).limit(10)));
             return new PaymentVerificationResponse(
                     PurchaseStatusEnum.ERROR,
                     null,

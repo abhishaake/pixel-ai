@@ -5,6 +5,7 @@ import com.av.pixel.dao.LikeGenerationMap;
 import com.av.pixel.repository.LikeGenerationMapRepository;
 import com.av.pixel.service.GenerationActionService;
 import com.av.pixel.service.NotificationService;
+import com.mongodb.client.result.UpdateResult;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
@@ -40,10 +41,16 @@ public class GenerationActionServiceImpl implements GenerationActionService {
 
     @Override
     public String likeGeneration (String userCode, String generationId) {
-        Query query = new Query(Criteria.where("_id").is(new ObjectId(generationId)));
+        Query query = new Query(Criteria.where("_id").is(new ObjectId(generationId))
+                .and("userCode").ne(userCode));
+
         Update update = new Update().inc("likes", 1);
 
-        mongoTemplate.updateFirst(query, update, Generations.class);
+        UpdateResult updateResult = mongoTemplate.updateFirst(query, update, Generations.class);
+
+        if (updateResult.getModifiedCount() == 0) {
+            return "Success";
+        }
 
         LikeGenerationMap likeGenerationMap = new LikeGenerationMap().setGenerationId(generationId)
                                                 .setUserCode(userCode);
@@ -55,10 +62,15 @@ public class GenerationActionServiceImpl implements GenerationActionService {
 
     @Override
     public String disLikeGeneration (String userCode, String generationId) {
-        Query query = new Query(Criteria.where("_id").is(new ObjectId(generationId)));
+        Query query = new Query(Criteria.where("_id").is(new ObjectId(generationId))
+                .and("userCode").ne(userCode));
         Update update = new Update().inc("likes", - 1);
 
-        mongoTemplate.updateFirst(query, update, Generations.class);
+        UpdateResult updateResult = mongoTemplate.updateFirst(query, update, Generations.class);
+
+        if (updateResult.getModifiedCount() == 0) {
+            return "Success";
+        }
 
         LikeGenerationMap likeGenerationMap = likeGenerationMapRepository.findByUserCodeAndGenerationIdAndDeletedFalse(userCode, generationId);
         likeGenerationMap.setDeleted(true);

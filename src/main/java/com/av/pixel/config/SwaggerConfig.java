@@ -11,6 +11,7 @@ public class SwaggerConfig {
     public GroupedOpenApi publicApi() {
         return GroupedOpenApi.builder()
                 .packagesToScan("com.av.pixel.controller")
+                .pathsToExclude("/api/v1/utility")
                 .pathsToMatch("/api/**")
                 .group("rest-api")
                 .build();

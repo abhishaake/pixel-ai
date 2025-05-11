@@ -9,6 +9,7 @@ import com.av.pixel.enums.OrderTypeEnum;
 import com.av.pixel.enums.PurchaseStatusEnum;
 import com.av.pixel.exception.Error;
 import com.av.pixel.google.PurchaseProcessingService;
+import com.av.pixel.helper.TransformUtil;
 import com.av.pixel.repository.PackageRepository;
 import com.av.pixel.request.PaymentVerificationRequest;
 import com.av.pixel.response.PaymentVerificationResponse;
@@ -35,6 +36,7 @@ public class MonetizationServiceImpl implements MonetizationService {
     private final PurchaseProcessingService purchaseProcessingService;
     private final RLock rLock;
     private final NotificationService notificationService;
+    private final EmailService emailService;
 
     @Override
     public void handleAdPayment (String userCode, String adIdentifier, String adTxnId, String timestamp) {
@@ -103,12 +105,14 @@ public class MonetizationServiceImpl implements MonetizationService {
             try{
                 if (StringUtils.isEmpty(productId)) {
                     saveErrorTransaction(transaction, "product id not found");
+                    emailService.sendPaymentErrorMail("product id not found", TransformUtil.toJson(paymentVerificationRequest));
                     return new PaymentVerificationResponse();
                 }
                 Packages packageInfo = packageRepository.getByPackageIdAndDeletedFalse(productId);
 
                 if (Objects.isNull(packageInfo)) {
                     saveErrorTransaction(transaction, "package not found");
+                    emailService.sendPaymentErrorMail("package not found", TransformUtil.toJson(paymentVerificationRequest));
                     return new PaymentVerificationResponse();
                 }
 

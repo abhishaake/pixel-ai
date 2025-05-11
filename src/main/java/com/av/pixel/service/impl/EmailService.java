@@ -8,6 +8,8 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -23,14 +25,30 @@ public class EmailService {
 
     @Async
     public void sendErrorMail (String body) {
-        SimpleMailMessage mailMessage = new SimpleMailMessage();
+        List<String> recipients = List.of(receiver.split(","));
 
-        mailMessage.setFrom(sender);
-        mailMessage.setTo(receiver);
-        mailMessage.setText(body);
-        mailMessage.setSubject("Pixel Exception");
+        for(String rec : recipients) {
+            SimpleMailMessage mailMessage = new SimpleMailMessage();
+            mailMessage.setFrom(sender);
+            mailMessage.setTo(rec);
+            mailMessage.setText(body);
+            mailMessage.setSubject("Pixel Exception");
+            sendSimpleMail(mailMessage);
+        }
+    }
 
-        log.info(sendSimpleMail(mailMessage));
+    @Async
+    public void sendPaymentErrorMail (String message, String body) {
+        List<String> recipients = List.of(receiver.split(","));
+
+        for(String rec : recipients) {
+            SimpleMailMessage mailMessage = new SimpleMailMessage();
+            mailMessage.setFrom(sender);
+            mailMessage.setTo(rec);
+            mailMessage.setText(body);
+            mailMessage.setSubject("Pixel Exception");
+            sendSimpleMail(mailMessage);
+        }
     }
 
     public String sendSimpleMail (SimpleMailMessage simpleMailMessage) {
