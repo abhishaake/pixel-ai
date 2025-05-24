@@ -46,7 +46,21 @@ public class EmailService {
             mailMessage.setFrom(sender);
             mailMessage.setTo(rec);
             mailMessage.setText(body);
-            mailMessage.setSubject("Pixel Exception");
+            mailMessage.setSubject("Pixel Payment Exception");
+            sendSimpleMail(mailMessage);
+        }
+    }
+
+    @Async
+    public void sendPaymentMail (String message, String body) {
+        List<String> recipients = List.of(receiver.split(","));
+
+        for(String rec : recipients) {
+            SimpleMailMessage mailMessage = new SimpleMailMessage();
+            mailMessage.setFrom(sender);
+            mailMessage.setTo(rec);
+            mailMessage.setText(body);
+            mailMessage.setSubject("Pixel Payment");
             sendSimpleMail(mailMessage);
         }
     }

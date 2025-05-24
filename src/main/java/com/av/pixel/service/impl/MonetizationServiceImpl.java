@@ -121,6 +121,7 @@ public class MonetizationServiceImpl implements MonetizationService {
                     UserCreditDTO userCreditDTO = userCreditService.creditUserCredits(userCode, packageInfo.getCredits(), transaction);
                     paymentVerificationResponse.setUserCredits(userCreditDTO.getAvailable());
                     notificationService.sendPaymentSuccessNotification(userCode, packageInfo.getCredits());
+                    emailService.sendPaymentMail("New Payment made", TransformUtil.toJson(paymentVerificationRequest));
                 }
                 else handleTransaction(transaction, paymentVerificationResponse);
 

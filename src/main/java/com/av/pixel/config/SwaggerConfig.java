@@ -12,7 +12,7 @@ public class SwaggerConfig {
         return GroupedOpenApi.builder()
                 .packagesToScan("com.av.pixel.controller")
                 .pathsToExclude("/api/v1/utility")
-                .pathsToMatch("/api/**")
+                .pathsToMatch("/api/test/**")
                 .group("rest-api")
                 .build();
     }
