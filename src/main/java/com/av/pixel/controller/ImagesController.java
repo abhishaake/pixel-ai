@@ -8,6 +8,7 @@ import com.av.pixel.request.GenerateRequest;
 import com.av.pixel.request.GenerationsFilterRequest;
 import com.av.pixel.request.ImageActionRequest;
 import com.av.pixel.request.ImagePricingRequest;
+import com.av.pixel.request.ImageReportRequest;
 import com.av.pixel.response.GenerationsFilterResponse;
 import com.av.pixel.response.ImagePricingResponse;
 import com.av.pixel.response.base.Response;
@@ -62,5 +63,11 @@ public class ImagesController {
     @PutMapping("/view")
     public ResponseEntity<Response<String>> addView (UserDTO userDTO, @RequestBody ImageActionRequest imageActionRequest) {
         return response(imagesService.addView(userDTO, imageActionRequest), HttpStatus.OK);
+    }
+
+    @Authenticated(permissions = PermissionEnum.ANY)
+    @PostMapping("/report")
+    public ResponseEntity<Response<String>> reportImage (UserDTO userDTO, @RequestBody ImageReportRequest imageReportRequest) {
+        return response(imagesService.reportImage(userDTO, imageReportRequest), HttpStatus.OK);
     }
 }

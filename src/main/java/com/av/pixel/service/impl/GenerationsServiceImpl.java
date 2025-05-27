@@ -4,6 +4,7 @@ import com.av.pixel.cache.RLock;
 import com.av.pixel.cache.Cache;
 import com.av.pixel.client.IdeogramClient;
 import com.av.pixel.dao.Generations;
+import com.av.pixel.dao.ImageFlag;
 import com.av.pixel.dao.ModelConfig;
 import com.av.pixel.dao.User;
 import com.av.pixel.dto.GenerationsDTO;
@@ -28,11 +29,13 @@ import com.av.pixel.mapper.GenerationsMap;
 import com.av.pixel.mapper.ModelConfigMap;
 import com.av.pixel.mapper.UserCreditMap;
 import com.av.pixel.mapper.ideogram.ImageMap;
+import com.av.pixel.repository.ImageFlagRepository;
 import com.av.pixel.repository.ModelConfigRepository;
 import com.av.pixel.request.GenerateRequest;
 import com.av.pixel.request.GenerationsFilterRequest;
 import com.av.pixel.request.ImageActionRequest;
 import com.av.pixel.request.ImagePricingRequest;
+import com.av.pixel.request.ImageReportRequest;
 import com.av.pixel.request.SortByRequest;
 import com.av.pixel.request.ideogram.ImageRequest;
 import com.av.pixel.response.GenerationsFilterResponse;
@@ -85,6 +88,7 @@ public class GenerationsServiceImpl implements GenerationsService {
     private final AdminConfigService adminConfigService;
     private final S3Service s3Service;
     private final ImageCompressionService imageCompressionService;
+    private final ImageFlagRepository imageFlagRepository;
 
     private static final String IMAGE_UNSAFE_LOGO = "https://av-pixel.s3.ap-south-1.amazonaws.com/image_not_safe_logo.jpeg";
 
@@ -407,5 +411,20 @@ public class GenerationsServiceImpl implements GenerationsService {
             return generationActionService.addView(imageActionRequest.getGenerationId());
         }
         return "success";
+    }
+
+    @Override
+    public String reportImage (UserDTO userDTO, ImageReportRequest imageReportRequest) {
+        if (Objects.isNull(imageReportRequest) || StringUtils.isEmpty(imageReportRequest.getGenId())) {
+            return "SUCCESS";
+        }
+        String userCode = Objects.nonNull(userDTO) && StringUtils.isNotEmpty(userDTO.getCode()) ? userDTO.getCode() : null;
+        ImageFlag imageFlag = new ImageFlag()
+                .setGenId(imageReportRequest.getGenId())
+                .setImageId(imageReportRequest.getImageId())
+                .setReason(imageReportRequest.getReason())
+                .setUserCode(userCode);
+        imageFlagRepository.save(imageFlag);
+        return "SUCCESS";
     }
 }
