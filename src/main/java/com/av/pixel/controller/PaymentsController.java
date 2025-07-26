@@ -2,6 +2,7 @@ package com.av.pixel.controller;
 
 import com.av.pixel.auth.Authenticated;
 import com.av.pixel.dto.UserDTO;
+import com.av.pixel.helper.TransformUtil;
 import com.av.pixel.request.PaymentVerificationRequest;
 import com.av.pixel.response.PaymentVerificationResponse;
 import com.av.pixel.response.base.Response;
@@ -29,6 +30,21 @@ public class PaymentsController {
     @Authenticated
     public ResponseEntity<Response<PaymentVerificationResponse>> handlePaymentVerification (UserDTO userDTO,
                                                                                           @RequestBody PaymentVerificationRequest paymentVerificationRequest) {
+        log.info("request : {}", TransformUtil.toJson(paymentVerificationRequest));
+        return response(monetizationService.handlePayment(paymentVerificationRequest), HttpStatus.OK);
+    }
+
+    @PostMapping("/verify/google")
+    @Authenticated
+    public ResponseEntity<Response<PaymentVerificationResponse>> handleGooglePaymentVerification (UserDTO userDTO,
+                                                                                                 @RequestBody PaymentVerificationRequest paymentVerificationRequest) {
         return response(monetizationService.handleGooglePayment(paymentVerificationRequest), HttpStatus.OK);
+    }
+
+    @PostMapping("/verify/apple")
+    @Authenticated
+    public ResponseEntity<Response<PaymentVerificationResponse>> handleApplePaymentVerification (UserDTO userDTO,
+                                                                                                @RequestBody PaymentVerificationRequest paymentVerificationRequest) {
+        return response(monetizationService.handleApplePayment(paymentVerificationRequest), HttpStatus.OK);
     }
 }

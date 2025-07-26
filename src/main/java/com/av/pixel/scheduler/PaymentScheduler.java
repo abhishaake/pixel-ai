@@ -39,8 +39,8 @@ public class PaymentScheduler {
 
             log.info("handleFailedPayments for {}, {}, {}", userCode, productId, orderId);
 
-            PaymentVerificationRequest req = new PaymentVerificationRequest(userCode, productId, orderId);
-            log.info("res for userCode: {} : {}", userCode, monetizationService.handleGooglePayment(req));
+//            PaymentVerificationRequest req = new PaymentVerificationRequest(userCode, productId, orderId);
+//            log.info("res for userCode: {} : {}", userCode, monetizationService.handleGooglePayment(req));
         }
 
     }

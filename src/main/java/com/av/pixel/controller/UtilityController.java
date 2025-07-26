@@ -1,5 +1,7 @@
 package com.av.pixel.controller;
 
+import com.apple.itunes.storekit.client.APIException;
+import com.av.pixel.apple.AppStoreService;
 import com.av.pixel.dao.Generations;
 import com.av.pixel.enums.ImageCompressionConfig;
 import com.av.pixel.exception.Error;
@@ -19,8 +21,10 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -28,7 +32,15 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.awt.image.ConvolveOp;
+import java.awt.image.Kernel;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
 import java.net.http.HttpResponse;
 import java.util.HashMap;
 import java.util.Map;
@@ -59,6 +71,8 @@ public class UtilityController {
     EmailService emailService;
 
     ImageScheduler imageScheduler;
+
+    AppStoreService appStoreService;
 
     @GetMapping("/health")
     public Response<String> health() {
@@ -192,5 +206,10 @@ public class UtilityController {
     public Response<?> temp () {
         imageScheduler.tempMethod();
         return new Response<>("success");
+    }
+
+    @GetMapping("/apple/verify/{txnId}")
+    public Response<?> verifyAppleTxn(@PathVariable("txnId") String txnId) throws APIException, IOException {
+        return new Response<>(appStoreService.verifyTransactionWithOfficalClient(txnId));
     }
 }

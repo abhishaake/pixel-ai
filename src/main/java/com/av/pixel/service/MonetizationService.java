@@ -8,4 +8,8 @@ public interface MonetizationService {
     void handleAdPayment (String userCode, String adIdentifier, String adTxnId, String timestamp);
 
     PaymentVerificationResponse handleGooglePayment (PaymentVerificationRequest paymentVerificationRequest);
+    
+    PaymentVerificationResponse handleApplePayment (PaymentVerificationRequest paymentVerificationRequest);
+    
+    PaymentVerificationResponse handlePayment (PaymentVerificationRequest paymentVerificationRequest);
 }

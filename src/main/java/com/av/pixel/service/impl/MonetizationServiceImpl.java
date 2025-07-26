@@ -64,6 +64,20 @@ public class MonetizationServiceImpl implements MonetizationService {
 
 
     @Override
+    public PaymentVerificationResponse handlePayment (PaymentVerificationRequest paymentVerificationRequest) {
+        String platform = paymentVerificationRequest.getPlatform();
+        if ("apple".equalsIgnoreCase(platform)) {
+            return new PaymentVerificationResponse(PurchaseStatusEnum.SUCCESS, null, null);
+//            return handleApplePayment(paymentVerificationRequest);
+        } else if ("google".equalsIgnoreCase(platform)) {
+            return handleGooglePayment(paymentVerificationRequest);
+        } else {
+            // Default to Google for backward compatibility
+            return handleGooglePayment(paymentVerificationRequest);
+        }
+    }
+
+    @Override
     public PaymentVerificationResponse handleGooglePayment (PaymentVerificationRequest paymentVerificationRequest) {
         String userCode = paymentVerificationRequest.getUserCode();
         String productId = paymentVerificationRequest.getProductId();
@@ -116,7 +130,7 @@ public class MonetizationServiceImpl implements MonetizationService {
                     return new PaymentVerificationResponse();
                 }
 
-                PaymentVerificationResponse paymentVerificationResponse = purchaseProcessingService.processPurchase(productId, purchaseToken);
+                PaymentVerificationResponse paymentVerificationResponse = purchaseProcessingService.processGooglePurchase(productId, purchaseToken);
                 if (paymentVerificationResponse.isSuccess()) {
                     UserCreditDTO userCreditDTO = userCreditService.creditUserCredits(userCode, packageInfo.getCredits(), transaction);
                     paymentVerificationResponse.setUserCredits(userCreditDTO.getAvailable());
@@ -129,6 +143,185 @@ public class MonetizationServiceImpl implements MonetizationService {
             }
             catch (Exception e) {
                 log.error("[CRITICAL] error : {}", e.getMessage(), e);
+                saveErrorTransaction(transaction, "Exception occurred : " + e.getMessage());
+                return new PaymentVerificationResponse(
+                        PurchaseStatusEnum.ERROR,
+                        null,
+                        null,
+                        e.getMessage(),
+                        null
+                );
+            }
+        } finally {
+            rLock.unlock(lockKey);
+        }
+    }
+
+    @Override
+    public PaymentVerificationResponse handleApplePayment (PaymentVerificationRequest paymentVerificationRequest) {
+        String userCode = paymentVerificationRequest.getUserCode();
+        String productId = paymentVerificationRequest.getProductId();
+        String receiptData = paymentVerificationRequest.getReceiptData();
+        String transactionId = paymentVerificationRequest.getTransactionId();
+
+        if (StringUtils.isEmpty(userCode)) {
+            throw new Error("user code empty");
+        }
+        
+        // Support both receipt verification (legacy) and transaction verification (modern)
+        if (StringUtils.isEmpty(receiptData) && StringUtils.isEmpty(transactionId)) {
+            throw new Error("receiptData or transactionId required");
+        }
+        
+        // Use transaction ID verification if available (modern App Store Server API)
+        if (StringUtils.isNotEmpty(transactionId)) {
+            return handleAppleTransactionPayment(paymentVerificationRequest, transactionId);
+        }
+        
+        // Fall back to receipt verification (legacy)
+        return handleAppleReceiptPayment(paymentVerificationRequest, receiptData);
+    }
+
+    private PaymentVerificationResponse handleAppleReceiptPayment(PaymentVerificationRequest paymentVerificationRequest, String receiptData) {
+        String userCode = paymentVerificationRequest.getUserCode();
+        String productId = paymentVerificationRequest.getProductId();
+        
+        // Use transaction ID from receipt as lock key for Apple payments
+        String lockKey = "apple_receipt_" + receiptData.hashCode();
+        boolean locked = rLock.tryLock(lockKey, 500);
+        if (!locked) {
+            log.error("{} cannot lock", lockKey);
+            return new PaymentVerificationResponse(
+                    PurchaseStatusEnum.ERROR,
+                    null,
+                    null,
+                    "Locked",
+                    null
+            );
+        }
+
+        try {
+            // For Apple, we use receiptData hash as orderId initially
+            String tempOrderId = "apple_receipt_" + receiptData.hashCode();
+            Transactions transaction = transactionService.getTransactionByOrderId(tempOrderId);
+            
+            if (Objects.isNull(transaction)) {
+                transaction = createTransactionEntity(userCode, OrderTypeEnum.PURCHASE_CREDIT, tempOrderId, productId, OrderStatusEnum.INITIATED, "APPLE_RECEIPT");
+            } else {
+                if (OrderStatusEnum.SUCCESS.equals(transaction.getStatus())) {
+                    throw new Error("duplicate order");
+                }
+                transaction.setStatus(OrderStatusEnum.RETRY);
+                transaction.setRetries(transaction.getValidRetries() + 1);
+                transaction = transactionService.saveTransaction(transaction);
+            }
+
+            try{
+                if (StringUtils.isEmpty(productId)) {
+                    saveErrorTransaction(transaction, "product id not found");
+                    emailService.sendPaymentErrorMail("Apple Receipt: product id not found", TransformUtil.toJson(paymentVerificationRequest));
+                    return new PaymentVerificationResponse();
+                }
+                Packages packageInfo = packageRepository.getByPackageIdAndDeletedFalse(productId);
+
+                if (Objects.isNull(packageInfo)) {
+                    saveErrorTransaction(transaction, "package not found");
+                    emailService.sendPaymentErrorMail("Apple Receipt: package not found", TransformUtil.toJson(paymentVerificationRequest));
+                    return new PaymentVerificationResponse();
+                }
+
+                PaymentVerificationResponse paymentVerificationResponse = purchaseProcessingService.processApplePurchase(productId, receiptData);
+                if (paymentVerificationResponse.isSuccess()) {
+                    // Update transaction with actual Apple transaction ID
+                    if (paymentVerificationResponse.getOrderId() != null) {
+                        transaction.setOrderId(paymentVerificationResponse.getOrderId());
+                        transaction = transactionService.saveTransaction(transaction);
+                    }
+                    
+                    UserCreditDTO userCreditDTO = userCreditService.creditUserCredits(userCode, packageInfo.getCredits(), transaction);
+                    paymentVerificationResponse.setUserCredits(userCreditDTO.getAvailable());
+                    notificationService.sendPaymentSuccessNotification(userCode, packageInfo.getCredits());
+                    emailService.sendPaymentMail("New Apple Receipt Payment made", TransformUtil.toJson(paymentVerificationRequest));
+                }
+                else handleTransaction(transaction, paymentVerificationResponse);
+
+                return paymentVerificationResponse;
+            }
+            catch (Exception e) {
+                log.error("[CRITICAL] Apple receipt payment error : {}", e.getMessage(), e);
+                saveErrorTransaction(transaction, "Exception occurred : " + e.getMessage());
+                return new PaymentVerificationResponse(
+                        PurchaseStatusEnum.ERROR,
+                        null,
+                        null,
+                        e.getMessage(),
+                        null
+                );
+            }
+        } finally {
+            rLock.unlock(lockKey);
+        }
+    }
+
+    private PaymentVerificationResponse handleAppleTransactionPayment(PaymentVerificationRequest paymentVerificationRequest, String transactionId) {
+        String userCode = paymentVerificationRequest.getUserCode();
+        String productId = paymentVerificationRequest.getProductId();
+        
+        // Use transaction ID as lock key for Apple transaction payments
+        String lockKey = "apple_transaction_" + transactionId;
+        boolean locked = rLock.tryLock(lockKey, 500);
+        if (!locked) {
+            log.error("{} cannot lock", lockKey);
+            return new PaymentVerificationResponse(
+                    PurchaseStatusEnum.ERROR,
+                    null,
+                    null,
+                    "Locked",
+                    null
+            );
+        }
+
+        try {
+            Transactions transaction = transactionService.getTransactionByOrderId(transactionId);
+            
+            if (Objects.isNull(transaction)) {
+                transaction = createTransactionEntity(userCode, OrderTypeEnum.PURCHASE_CREDIT, transactionId, productId, OrderStatusEnum.INITIATED, "APPLE_TRANSACTION");
+            } else {
+                if (OrderStatusEnum.SUCCESS.equals(transaction.getStatus())) {
+                    throw new Error("duplicate order");
+                }
+                transaction.setStatus(OrderStatusEnum.RETRY);
+                transaction.setRetries(transaction.getValidRetries() + 1);
+                transaction = transactionService.saveTransaction(transaction);
+            }
+
+            try{
+                if (StringUtils.isEmpty(productId)) {
+                    saveErrorTransaction(transaction, "product id not found");
+                    emailService.sendPaymentErrorMail("Apple Transaction: product id not found", TransformUtil.toJson(paymentVerificationRequest));
+                    return new PaymentVerificationResponse();
+                }
+                Packages packageInfo = packageRepository.getByPackageIdAndDeletedFalse(productId);
+
+                if (Objects.isNull(packageInfo)) {
+                    saveErrorTransaction(transaction, "package not found");
+                    emailService.sendPaymentErrorMail("Apple Transaction: package not found", TransformUtil.toJson(paymentVerificationRequest));
+                    return new PaymentVerificationResponse();
+                }
+
+                PaymentVerificationResponse paymentVerificationResponse = purchaseProcessingService.processAppleTransaction(transactionId);
+                if (paymentVerificationResponse.isSuccess()) {
+                    UserCreditDTO userCreditDTO = userCreditService.creditUserCredits(userCode, packageInfo.getCredits(), transaction);
+                    paymentVerificationResponse.setUserCredits(userCreditDTO.getAvailable());
+                    notificationService.sendPaymentSuccessNotification(userCode, packageInfo.getCredits());
+                    emailService.sendPaymentMail("New Apple Transaction Payment made", TransformUtil.toJson(paymentVerificationRequest));
+                }
+                else handleTransaction(transaction, paymentVerificationResponse);
+
+                return paymentVerificationResponse;
+            }
+            catch (Exception e) {
+                log.error("[CRITICAL] Apple transaction payment error : {}", e.getMessage(), e);
                 saveErrorTransaction(transaction, "Exception occurred : " + e.getMessage());
                 return new PaymentVerificationResponse(
                         PurchaseStatusEnum.ERROR,
