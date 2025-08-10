@@ -5,8 +5,11 @@ import com.av.pixel.apple.AppStoreService;
 import com.av.pixel.dao.Generations;
 import com.av.pixel.enums.ImageCompressionConfig;
 import com.av.pixel.exception.Error;
+import com.av.pixel.google.PurchaseProcessingService;
 import com.av.pixel.helper.DateUtil;
 import com.av.pixel.repository.GenerationsRepository;
+import com.av.pixel.request.PaymentVerificationRequest;
+import com.av.pixel.response.PaymentVerificationResponse;
 import com.av.pixel.response.base.Response;
 import com.av.pixel.response.ideogram.ImageResponse;
 import com.av.pixel.scheduler.CacheScheduler;
@@ -73,6 +76,8 @@ public class UtilityController {
     ImageScheduler imageScheduler;
 
     AppStoreService appStoreService;
+
+    PurchaseProcessingService purchaseProcessingService;
 
     @GetMapping("/health")
     public Response<String> health() {
@@ -211,5 +216,13 @@ public class UtilityController {
     @GetMapping("/apple/verify/{txnId}")
     public Response<?> verifyAppleTxn(@PathVariable("txnId") String txnId) throws APIException, IOException {
         return new Response<>(appStoreService.verifyTransactionWithOfficalClient(txnId));
+    }
+
+    @PostMapping("/apple/verification")
+    public Response<?> testTransactionVerification(@RequestBody PaymentVerificationRequest paymentVerificationRequest ) {
+        PaymentVerificationResponse paymentVerificationResponse = purchaseProcessingService.processApplePurchase(paymentVerificationRequest.getProductId(),
+                paymentVerificationRequest.getReceiptData());
+
+        return new Response<>(paymentVerificationResponse);
     }
 }

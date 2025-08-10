@@ -67,7 +67,6 @@ public class MonetizationServiceImpl implements MonetizationService {
     public PaymentVerificationResponse handlePayment (PaymentVerificationRequest paymentVerificationRequest) {
         String platform = paymentVerificationRequest.getPlatform();
         if ("apple".equalsIgnoreCase(platform)) {
-//            return new PaymentVerificationResponse(PurchaseStatusEnum.SUCCESS, null, null);
             return handleApplePayment(paymentVerificationRequest);
         } else if ("google".equalsIgnoreCase(platform)) {
             return handleGooglePayment(paymentVerificationRequest);
@@ -167,16 +166,16 @@ public class MonetizationServiceImpl implements MonetizationService {
         if (StringUtils.isEmpty(userCode)) {
             throw new Error("user code empty");
         }
-        
+
         // Support both receipt verification (legacy) and transaction verification (modern)
         if (StringUtils.isEmpty(receiptData) && StringUtils.isEmpty(transactionId)) {
             throw new Error("receiptData or transactionId required");
         }
-        
+
         // Use transaction ID verification if available (modern App Store Server API)
-        if (StringUtils.isNotEmpty(transactionId)) {
-            return handleAppleTransactionPayment(paymentVerificationRequest, transactionId);
-        }
+//        if (StringUtils.isNotEmpty(transactionId)) {
+//            return handleAppleTransactionPayment(paymentVerificationRequest, transactionId);
+//        }
         
         // Fall back to receipt verification (legacy)
         return handleAppleReceiptPayment(paymentVerificationRequest, receiptData);
@@ -187,7 +186,11 @@ public class MonetizationServiceImpl implements MonetizationService {
         String productId = paymentVerificationRequest.getProductId();
         
         // Use transaction ID from receipt as lock key for Apple payments
-        String lockKey = "apple_receipt_" + receiptData.hashCode();
+
+        String uniqueKey = StringUtils.isNotEmpty(paymentVerificationRequest.getTransactionId()) ? paymentVerificationRequest.getTransactionId()
+                                    : StringUtils.isNotEmpty(paymentVerificationRequest.getPurchaseId()) ? paymentVerificationRequest.getPurchaseId()
+                                        : String.valueOf(receiptData.hashCode());
+        String lockKey = "apple_receipt_" + uniqueKey;
         boolean locked = rLock.tryLock(lockKey, 500);
         if (!locked) {
             log.error("{} cannot lock", lockKey);
@@ -202,11 +205,10 @@ public class MonetizationServiceImpl implements MonetizationService {
 
         try {
             // For Apple, we use receiptData hash as orderId initially
-            String tempOrderId = "apple_receipt_" + receiptData.hashCode();
-            Transactions transaction = transactionService.getTransactionByOrderId(tempOrderId);
+            Transactions transaction = transactionService.getTransactionByOrderId(uniqueKey);
             
             if (Objects.isNull(transaction)) {
-                transaction = createTransactionEntity(userCode, OrderTypeEnum.PURCHASE_CREDIT, tempOrderId, productId, OrderStatusEnum.INITIATED, "APPLE_RECEIPT");
+                transaction = createTransactionEntity(userCode, OrderTypeEnum.PURCHASE_CREDIT, uniqueKey, productId, OrderStatusEnum.INITIATED, "APPLE_RECEIPT");
             } else {
                 if (OrderStatusEnum.SUCCESS.equals(transaction.getStatus())) {
                     throw new Error("duplicate order");
@@ -230,10 +232,7 @@ public class MonetizationServiceImpl implements MonetizationService {
                     return new PaymentVerificationResponse();
                 }
 
-                PaymentVerificationResponse paymentVerificationResponse = new PaymentVerificationResponse(PurchaseStatusEnum.SUCCESS,
-                        "ORDER_TEST",
-                        null);
-//                PaymentVerificationResponse paymentVerificationResponse = purchaseProcessingService.processApplePurchase(productId, receiptData);
+                PaymentVerificationResponse paymentVerificationResponse = purchaseProcessingService.processApplePurchase(productId, receiptData);
                 if (paymentVerificationResponse.isSuccess()) {
                     // Update transaction with actual Apple transaction ID
                     if (paymentVerificationResponse.getOrderId() != null) {

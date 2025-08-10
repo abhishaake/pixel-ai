@@ -65,7 +65,7 @@ public class AppStoreService {
      */
     public AppleReceiptResponse verifyReceipt(String receiptData) {
         try {
-            String url = sandbox ? SANDBOX_VERIFY_RECEIPT_URL : PRODUCTION_VERIFY_RECEIPT_URL;
+            String url = PRODUCTION_VERIFY_RECEIPT_URL;
             
             AppleReceiptRequest request = new AppleReceiptRequest();
             request.setReceiptData(receiptData);
@@ -84,7 +84,7 @@ public class AppStoreService {
             AppleReceiptResponse receiptResponse = response.getBody();
             
             // If status is 21007 (sandbox receipt sent to production), retry with sandbox URL
-            if (receiptResponse != null && receiptResponse.getStatus() == 21007 && !sandbox) {
+            if (receiptResponse.getStatus() == 21007) {
                 log.info("Sandbox receipt detected, retrying with sandbox URL");
                 HttpEntity<AppleReceiptRequest> sandboxEntity = new HttpEntity<>(request, headers);
                 ResponseEntity<AppleReceiptResponse> sandboxResponse = restTemplate.postForEntity(SANDBOX_VERIFY_RECEIPT_URL, sandboxEntity, AppleReceiptResponse.class);
