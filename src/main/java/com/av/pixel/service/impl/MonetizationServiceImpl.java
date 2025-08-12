@@ -134,7 +134,7 @@ public class MonetizationServiceImpl implements MonetizationService {
                     UserCreditDTO userCreditDTO = userCreditService.creditUserCredits(userCode, packageInfo.getCredits(), transaction);
                     paymentVerificationResponse.setUserCredits(userCreditDTO.getAvailable());
                     notificationService.sendPaymentSuccessNotification(userCode, packageInfo.getCredits());
-                    emailService.sendPaymentMail("New Payment made", TransformUtil.toJson(paymentVerificationRequest));
+                    emailService.sendPaymentMail("New Payment made", TransformUtil.toJson(paymentVerificationRequest), userCode);
                 }
                 else handleTransaction(transaction, paymentVerificationResponse);
 
@@ -239,11 +239,16 @@ public class MonetizationServiceImpl implements MonetizationService {
                         transaction.setOrderId(paymentVerificationResponse.getOrderId());
                         transaction = transactionService.saveTransaction(transaction);
                     }
-                    
-                    UserCreditDTO userCreditDTO = userCreditService.creditUserCredits(userCode, packageInfo.getCredits(), transaction);
+                    int credits = packageInfo.getCredits();
+                    if (Boolean.TRUE.equals(paymentVerificationResponse.getTestUser())) {
+                        log.info("test user for txn {} ", paymentVerificationResponse.getOrderId());
+                        credits = 10;
+                    }
+
+                    UserCreditDTO userCreditDTO = userCreditService.creditUserCredits(userCode, credits, transaction);
                     paymentVerificationResponse.setUserCredits(userCreditDTO.getAvailable());
-                    notificationService.sendPaymentSuccessNotification(userCode, packageInfo.getCredits());
-                    emailService.sendPaymentMail("New Apple Receipt Payment made", TransformUtil.toJson(paymentVerificationRequest));
+                    notificationService.sendPaymentSuccessNotification(userCode, credits);
+                    emailService.sendPaymentMail("New Apple Receipt Payment made", TransformUtil.toJson(paymentVerificationRequest), userCode);
                 }
                 else handleTransaction(transaction, paymentVerificationResponse);
 

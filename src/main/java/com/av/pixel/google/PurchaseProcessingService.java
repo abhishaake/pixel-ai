@@ -117,7 +117,10 @@ public class PurchaseProcessingService {
                 return new PaymentVerificationResponse(
                         PurchaseStatusEnum.SUCCESS,
                         purchase.getTransactionId(),
-                        purchase.getPurchaseDateMs()
+                        purchase.getPurchaseDateMs(),
+                        null,
+                        null,
+                        response.getIsSandbox()
                 );
             }
             else if (ApplePurchaseValidator.isCanceledPurchase(response)) {
