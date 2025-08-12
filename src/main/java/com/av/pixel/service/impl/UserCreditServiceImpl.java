@@ -25,6 +25,7 @@ public class UserCreditServiceImpl implements UserCreditService {
     private final UserCreditRepository userCreditRepository;
     private final UserCreditHelper userCreditHelper;
     private final TransactionService transactionService;
+    private final EmailService emailService;
 
     @Override
     public UserCredit createNewUserCredit (User user) {
@@ -89,6 +90,8 @@ public class UserCreditServiceImpl implements UserCreditService {
 
         transactionService.saveTransaction(userCode, available, used, userCredit.getAvailable(), orderType,
                 orderId, null, OrderStatusEnum.SUCCESS, null, source, null);
+
+        emailService.sendMilestoneMail(userCode);
 
         return userCreditDTO;
     }

@@ -88,7 +88,12 @@ public class AppStoreService {
                 log.info("Sandbox receipt detected, retrying with sandbox URL");
                 HttpEntity<AppleReceiptRequest> sandboxEntity = new HttpEntity<>(request, headers);
                 ResponseEntity<AppleReceiptResponse> sandboxResponse = restTemplate.postForEntity(SANDBOX_VERIFY_RECEIPT_URL, sandboxEntity, AppleReceiptResponse.class);
+                AppleReceiptResponse res = sandboxResponse.getBody();
+                res.setIsSandbox(true);
                 return sandboxResponse.getBody();
+            }
+            else {
+                receiptResponse.setIsSandbox(false);
             }
             
             return receiptResponse;

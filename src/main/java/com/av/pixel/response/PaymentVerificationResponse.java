@@ -19,6 +19,19 @@ public class PaymentVerificationResponse {
     String purchaseTime;
     String exceptionMsg;
     Integer userCredits;
+    Boolean testUser;
+
+    public PaymentVerificationResponse(PurchaseStatusEnum status,
+                                       String orderId,
+                                       String purchaseTime,
+                                       String exceptionMsg,
+                                       Integer userCredits) {
+        this.status = status;
+        this.orderId = orderId;
+        this.purchaseTime = purchaseTime;
+        this.exceptionMsg = exceptionMsg;
+        this.userCredits = userCredits;
+    }
 
     public PaymentVerificationResponse(PurchaseStatusEnum status, String orderId, String purchaseTime) {
         this.status = status;

@@ -7,4 +7,5 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface GenerationHistoryRepository extends BaseRepository<GenerationHistory, String> {
 
+    long countByUserCode(String userCode);
 }
