@@ -137,6 +137,16 @@ public class GenerationsServiceImpl implements GenerationsService {
             locker.unlock(key);
             return res;
         }
+        catch (Error e) {
+            Thread.currentThread().interrupt();
+            locker.unlock(key);
+            throw e;
+        }
+        catch (IdeogramUnprocessableEntityException e) {
+            Thread.currentThread().interrupt();
+            locker.unlock(key);
+            throw new Error(e.getError());
+        }
         catch (Exception e) {
             Thread.currentThread().interrupt();
             locker.unlock(key);
