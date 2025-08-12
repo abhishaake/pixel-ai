@@ -24,6 +24,7 @@ import com.av.pixel.exception.IdeogramException;
 import com.av.pixel.exception.IdeogramUnprocessableEntityException;
 import com.av.pixel.helper.DateUtil;
 import com.av.pixel.helper.GenerationHelper;
+import com.av.pixel.helper.TransformUtil;
 import com.av.pixel.helper.Validator;
 import com.av.pixel.mapper.GenerationsMap;
 import com.av.pixel.mapper.ModelConfigMap;
@@ -89,6 +90,7 @@ public class GenerationsServiceImpl implements GenerationsService {
     private final S3Service s3Service;
     private final ImageCompressionService imageCompressionService;
     private final ImageFlagRepository imageFlagRepository;
+    private final EmailService emailService;
 
     private static final String IMAGE_UNSAFE_LOGO = "https://av-pixel.s3.ap-south-1.amazonaws.com/image_not_safe_logo.jpeg";
 
@@ -170,7 +172,7 @@ public class GenerationsServiceImpl implements GenerationsService {
         } catch (Exception e) {
             return null;
         }
-        checkForSafeImages(res);
+        checkForSafeImages(imageRequest, res, userCode);
         try {
             uploadToS3(res, userCode);
             return res;
@@ -181,7 +183,7 @@ public class GenerationsServiceImpl implements GenerationsService {
         }
     }
 
-    private void checkForSafeImages (List<ImageResponse> res) {
+    private void checkForSafeImages(ImageRequest imageRequest, List<ImageResponse> res, String userCode) {
         if (CollectionUtils.isEmpty(res)) {
             return;
         }
@@ -190,18 +192,23 @@ public class GenerationsServiceImpl implements GenerationsService {
         try {
             res.sort(Comparator.comparing(ImageResponse::getIsImageSafe).reversed());
 
-            for(int i=0;i<size;i++){
+            for (int i = 0; i < size; i++) {
                 if (Boolean.FALSE.equals(res.get(i).getIsImageSafe())) {
                     unsafeImages++;
                     res.get(i).setUrl(IMAGE_UNSAFE_LOGO);
                     res.get(i).setThumbnailUrl(IMAGE_UNSAFE_LOGO);
                 }
             }
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             log.error("[CRITICAL] ", e);
         }
-        if (unsafeImages==size) {
+        if (unsafeImages > 0) {
+            String body = "[CRITICAL] ideogram exception " + " \n\n requestBody: " + TransformUtil.toJson(imageRequest)
+                    + "\n \n error : Found " + unsafeImages + " unsafe images "
+                    + "\n \n user Code : " + userCode;
+            emailService.sendErrorMail(body);
+        }
+        if (unsafeImages == size) {
             throw new IdeogramUnprocessableEntityException();
         }
     }
