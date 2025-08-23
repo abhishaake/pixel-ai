@@ -5,12 +5,15 @@ import com.av.pixel.enums.IdeogramModelEnum;
 import com.av.pixel.enums.ImageStyleEnum;
 import com.av.pixel.enums.MagicPromptOptionEnum;
 import com.av.pixel.enums.ResolutionEnum;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import lombok.experimental.Accessors;
+import org.springframework.web.multipart.MultipartFile;
 
 @Data
+@JsonIgnoreProperties({"files"})
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
 @Accessors(chain = true)
 public class ImageRequest {
@@ -40,4 +43,6 @@ public class ImageRequest {
 
     @JsonProperty("color_palette")
     ColorPalette colorPalette;
+
+    MultipartFile files;
 }

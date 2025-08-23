@@ -13,11 +13,13 @@ import java.util.Map;
 @EqualsAndHashCode(callSuper = true)
 @Data
 @Accessors(chain = true)
-@Document("model_config")
+@Document("model_config_testing")
 public class ModelConfig extends BaseEntity {
 
     @Field("model_type")
     String model;
 
     Map<String, Object> config;
+
+    Integer order;
 }

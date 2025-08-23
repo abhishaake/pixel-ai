@@ -11,12 +11,13 @@ import com.av.pixel.exception.Error;
 import com.av.pixel.request.GenerateRequest;
 import com.av.pixel.request.ideogram.ColorPalette;
 import com.av.pixel.request.ideogram.ImageRequest;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Objects;
 
 public class ImageMap {
 
-    public static ImageRequest validateAndGetImageRequest (GenerateRequest generateRequest) {
+    public static ImageRequest validateAndGetImageRequest (GenerateRequest generateRequest, MultipartFile file) {
         AspectRatioEnum aspectRatio = AspectRatioEnum.getEnumByName(generateRequest.getAspectRatio());
         ImageRenderOptionEnum renderOption = ImageRenderOptionEnum.getEnumByName(generateRequest.getRenderOption());
         IdeogramModelEnum model = PixelModelEnum.getIdeogramModelByNameAndRenderOption(generateRequest.getModel(), renderOption);
@@ -27,6 +28,9 @@ public class ImageMap {
 
         MagicPromptOptionEnum magicPromptOption = MagicPromptOptionEnum.getEnumByName(generateRequest.getMagicPromptOption());
         ImageStyleEnum imageStyle = ImageStyleEnum.getEnumByValue(generateRequest.getStyleType());
+        if(file == null && ImageStyleEnum.FICTION.equals(imageStyle)) {
+            imageStyle = ImageStyleEnum.AUTO;
+        }
 
         return new ImageRequest()
                 .setNumberOfImages(generateRequest.getNoOfImages())
@@ -35,6 +39,7 @@ public class ImageMap {
                 .setMagicPromptOption(magicPromptOption)
                 .setPrompt(generateRequest.getPrompt())
                 .setSeed(generateRequest.getSeed())
+                .setFiles(file)
                 .setNegativePrompt(model.isNegativePromptEnabled() ? generateRequest.getNegativePrompt() : null)
                 .setResolution(null)
                 .setStyleType(model.isStyleEnabled() ? imageStyle : null)

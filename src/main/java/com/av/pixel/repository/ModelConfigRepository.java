@@ -8,5 +8,5 @@ import java.util.List;
 
 @Repository
 public interface ModelConfigRepository extends BaseRepository<ModelConfig, String> {
-    List<ModelConfig> findAllByDeletedFalse();
+    List<ModelConfig> findAllByDeletedFalseOrderByOrderDesc();
 }

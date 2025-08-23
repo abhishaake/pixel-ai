@@ -16,6 +16,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
@@ -48,6 +50,18 @@ public class IdeogramBaseClient {
         return validateAndReturnResponse(response, url, requestBody);
     }
 
+    public <T> List<T> exchangeMultiPart(RestTemplate restTemplate, String url, HttpMethod httpMethod, MultiValueMap<String, Object> requestBody, HttpHeaders httpHeaders, ParameterizedTypeReference<BaseResponse<T>> type){
+
+
+        // Build request
+        HttpEntity<MultiValueMap<String, Object>> requestEntity =
+                new HttpEntity<>(requestBody, httpHeaders);
+
+        // Send request
+        ResponseEntity<BaseResponse<T>> response = exchangeMultiPart(restTemplate, url, httpMethod, requestEntity, type);
+        return validateAndReturnResponse(response, url, requestBody);
+    }
+
     private <T> List<T> validateAndReturnResponse(ResponseEntity<BaseResponse<T>> response, String url, Object requestBody) {
 
         if (Objects.isNull(response)){
@@ -69,6 +83,37 @@ public class IdeogramBaseClient {
         httpHeaders.setAccept(List.of(MediaType.APPLICATION_JSON));
         return httpHeaders;
     }
+
+    public HttpHeaders getDefaultHeadersV2() {
+        HttpHeaders httpHeaders = new HttpHeaders();
+        httpHeaders.set("Api-Key", API_KEY);
+        httpHeaders.setContentType(MediaType.MULTIPART_FORM_DATA);
+        return httpHeaders;
+    }
+
+
+    private <T> ResponseEntity<BaseResponse<T>> exchangeMultiPart(RestTemplate restTemplate, String url, HttpMethod httpMethod, HttpEntity<MultiValueMap<String, Object>> entity, ParameterizedTypeReference<BaseResponse<T>> type) {
+        try {
+            return restTemplate.exchange(url, httpMethod, entity, type);
+        } catch (HttpClientErrorException e) {
+            String responseBody = e.getResponseBodyAsString();
+            printExceptionAndSendMail(url, e.getStatusCode(), e.getStatusText(), responseBody, e.getMessage(), e.getStackTrace(), entity.getBody());
+
+            if (e.getStatusCode() == HttpStatus.UNPROCESSABLE_ENTITY) {
+                throw new IdeogramUnprocessableEntityException();
+            }
+
+            throw new IdeogramException(HttpStatus.valueOf(e.getStatusCode().value()), null, e.getMessage());
+        } catch (HttpServerErrorException e) {
+            String responseBody = e.getResponseBodyAsString();
+            printExceptionAndSendMail(url, e.getStatusCode(), e.getStatusText(), responseBody, e.getMessage(), e.getStackTrace(), entity.getBody());
+            throw new IdeogramServerException(HttpStatus.valueOf(e.getStatusCode().value()), null, e.getMessage());
+        } catch (Exception e) {
+            printExceptionAndSendMail(url, null, null, null, e.getMessage(), e.getStackTrace(), entity.getBody());
+            throw new IdeogramServerException(HttpStatus.INTERNAL_SERVER_ERROR, null, e.getMessage());
+        }
+    }
+
 
     private <T> ResponseEntity<BaseResponse<T>> exchange(RestTemplate restTemplate, String url, HttpMethod httpMethod, HttpEntity<Object> entity, ParameterizedTypeReference<BaseResponse<T>> type) {
         try {
