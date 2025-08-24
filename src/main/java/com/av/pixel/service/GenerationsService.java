@@ -11,12 +11,13 @@ import com.av.pixel.request.ImageReportRequest;
 import com.av.pixel.response.GenerationsFilterResponse;
 import com.av.pixel.response.ImagePricingResponse;
 import com.av.pixel.response.ModelConfigResponse;
+import org.springframework.web.multipart.MultipartFile;
 
 public interface GenerationsService {
 
     GenerationsFilterResponse filterImages(UserDTO userDTO, GenerationsFilterRequest imageFilterRequest);
 
-    GenerationsDTO generate(UserDTO userDTO, GenerateRequest generateRequest);
+    GenerationsDTO generate(UserDTO userDTO, GenerateRequest generateRequest, MultipartFile file);
 
     ImagePricingResponse getPricing (ImagePricingRequest imagePricingRequest);
 

@@ -64,6 +64,7 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
@@ -95,7 +96,7 @@ public class GenerationsServiceImpl implements GenerationsService {
     private static final String IMAGE_UNSAFE_LOGO = "https://av-pixel.s3.ap-south-1.amazonaws.com/image_not_safe_logo.jpeg";
 
     @Override
-    public GenerationsDTO generate (UserDTO userDTO, GenerateRequest generateRequest) {
+    public GenerationsDTO generate (UserDTO userDTO, GenerateRequest generateRequest, MultipartFile file) {
         log.info("generate img req {} from {}", generateRequest.getPrompt(), userDTO.getCode());
         Validator.validateGenerateRequest(generateRequest);
 
@@ -120,7 +121,7 @@ public class GenerationsServiceImpl implements GenerationsService {
                 throw new Error(HttpStatus.PAYMENT_REQUIRED, "Not enough credits");
             }
 
-            ImageRequest imageRequest = ImageMap.validateAndGetImageRequest(generateRequest);
+            ImageRequest imageRequest = ImageMap.validateAndGetImageRequest(generateRequest,file);
 
             List<ImageResponse> imageResponses = generateImage(imageRequest, userDTO.getCode());
 
@@ -163,7 +164,11 @@ public class GenerationsServiceImpl implements GenerationsService {
             if (adminConfigService.isIdeogramClientDisabled(userCode)) {
                 return generationHelper.generateImages(imageRequest);
             }
-            res = ideogramClient.generateImages(imageRequest);
+            if(imageRequest.getModel() == IdeogramModelEnum.V_3_QUALITY || imageRequest.getModel() == IdeogramModelEnum.V_3_TURBO){
+                res = ideogramClient.generateImagesV2(imageRequest);
+            }else {
+                res = ideogramClient.generateImages(imageRequest);
+            }
         } catch (IdeogramUnprocessableEntityException e) {
             throw new Error(e.getError());
         }
@@ -351,6 +356,7 @@ public class GenerationsServiceImpl implements GenerationsService {
                 .setSeed(generateRequest.getSeed())
                 .setPrivateImage(generateRequest.getPrivateImage())
                 .setNegativePrompt(generateRequest.getNegativePrompt())
+                .setHaveCharacterFile(generateRequest.getHaveCharacterFile())
                 .setRenderOption(generateRequest.getRenderOption());
 
         ImagePricingResponse imagePricingResponse = getPricing(imagePricingRequest);
@@ -378,9 +384,10 @@ public class GenerationsServiceImpl implements GenerationsService {
         }
 
         boolean isSeed = Objects.nonNull(imagePricingRequest.getSeed());
+        boolean isCharacter = Objects.requireNonNullElse(imagePricingRequest.getHaveCharacterFile(), false);
 
         Integer finalCost = modelPricingDTO.getFinalCost(imagePricingRequest.getNoOfImages(),
-                imagePricingRequest.isPrivateImage(), isSeed, StringUtils.isNotEmpty(imagePricingRequest.getNegativePrompt()));
+                imagePricingRequest.isPrivateImage(), isSeed, StringUtils.isNotEmpty(imagePricingRequest.getNegativePrompt()),isCharacter);
 
         return new ImagePricingResponse()
                 .setFinalCost(finalCost);
@@ -388,7 +395,7 @@ public class GenerationsServiceImpl implements GenerationsService {
 
     @Override
     public ModelConfigResponse getModelConfigs () {
-        List<ModelConfig> modelConfigs = modelConfigRepository.findAllByDeletedFalse();
+        List<ModelConfig> modelConfigs = modelConfigRepository.findAllByDeletedFalseOrderByOrderDesc();
 
         if (CollectionUtils.isEmpty(modelConfigs)) {
             throw new Error("no model config found");

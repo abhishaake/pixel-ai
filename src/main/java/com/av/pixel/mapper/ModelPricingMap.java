@@ -22,6 +22,8 @@ public class ModelPricingMap {
                 .setPrivacyCostMultiplier(modelPricing.getPrivacyCostMultiplier())
                 .setSeedCost(modelPricing.getSeedCost())
                 .setSeedCostMultiplier(modelPricing.getSeedCostMultiplier())
+                .setCharacterPrice(modelPricing.getCharacterPrice())
+                .setCharacterMultiplier(modelPricing.getCharacterMultiplier())
                 .setNegativePromptCost(modelPricing.getNegativePromptCost())
                 .setNegativePromptCostMultiplier(modelPricing.getNegativePromptCostMultiplier());
     }
