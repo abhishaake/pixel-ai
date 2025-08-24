@@ -13,7 +13,7 @@ import java.util.Map;
 @EqualsAndHashCode(callSuper = true)
 @Data
 @Accessors(chain = true)
-@Document("model_config_testing")
+@Document("model_config_v2")
 public class ModelConfig extends BaseEntity {
 
     @Field("model_type")
