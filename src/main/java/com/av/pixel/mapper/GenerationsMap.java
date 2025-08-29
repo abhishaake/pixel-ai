@@ -68,6 +68,7 @@ public class GenerationsMap {
                 .setPrivateImage(generations.getPrivateImage())
                 .setStyle(styleEnum.getValue())
                 .setColorPalette(generations.getColorPalette())
+                .setCharacterRefImageUrl(generations.getCharacterRefImageUrl())
                 .setAspectRatio(generations.getAspectRatio());
     }
 

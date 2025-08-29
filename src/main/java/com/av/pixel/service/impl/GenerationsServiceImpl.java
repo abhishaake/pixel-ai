@@ -51,8 +51,6 @@ import com.av.pixel.service.GenerationActionService;
 import com.av.pixel.service.S3Service;
 import com.av.pixel.service.UserCreditService;
 import com.av.pixel.service.UserService;
-import com.av.pixel.service.impl.BlockUserService;
-import com.av.pixel.service.impl.EmailService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -147,18 +145,20 @@ public class GenerationsServiceImpl implements GenerationsService {
                 throw new Error("Some error occurred, please try again");
             }
 
+            final String characterRefImageUrl = safeUploadRefImage(userDTO.getCode(), file);
+
             // Execute database operations concurrently
             CompletableFuture<Generations> saveGenerationFuture = asyncUtil.executeAsync(() -> 
-                generationHelper.saveUserGeneration(userDTO.getCode(), generateRequest, imageRequest, imageResponses, imageGenerationCost));
+                generationHelper.saveUserGeneration(userDTO.getCode(), generateRequest, imageRequest, imageResponses, imageGenerationCost, characterRefImageUrl));
 
             Generations generations = saveGenerationFuture.get();
+
 
             // Execute credit debit asynchronously (fire and forget)
             asyncUtil.executeAsync(() -> {
                 userCreditService.debitUserCredit(userDTO.getCode(), imageGenerationCost, OrderTypeEnum.IMAGE_GENERATION, "SERVER", generations.getId().toString());
                 return null;
             });
-
             GenerationsDTO res = GenerationsMap.toGenerationsDTO(generations);
             assert res != null;
             res.setUserName(userDTO.getFirstName())
@@ -194,6 +194,17 @@ public class GenerationsServiceImpl implements GenerationsService {
             throw e;
         }
     }
+
+    String safeUploadRefImage(String userCode, MultipartFile file) {
+        try{
+            String fileName = getFileName(userCode + "_ref", DateUtil.currentTimeMillis());
+            return s3Service.uploadFile(fileName,file.getBytes());
+        }catch (Exception e) {
+            log.error("Error uploading file", e);
+            return null;
+        }
+    }
+
 
 
     private List<ImageResponse> generateImage (ImageRequest imageRequest, String userCode) {

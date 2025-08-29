@@ -82,11 +82,11 @@ public class GenerationHelper {
         return res;
     }
 
-    public Generations saveUserGeneration (String userCode, GenerateRequest generateRequest, ImageRequest imageRequest, List<ImageResponse> imageResponses, Integer imageGenerationCost) {
+    public Generations saveUserGeneration (String userCode, GenerateRequest generateRequest, ImageRequest imageRequest, List<ImageResponse> imageResponses, Integer imageGenerationCost,String characterRefImageUrl) {
         Generations generations = GenerationsMap.toGenerationsEntity(userCode, generateRequest.getModel(), generateRequest.getPrompt(),
                 generateRequest.getRenderOption(), generateRequest.getPrivateImage(), Objects.nonNull(imageRequest.getStyleType()) ? imageRequest.getStyleType().name() : ImageStyleEnum.AUTO.name(),
                 generateRequest.getColorPalette(), imageRequest.getAspectRatio(), imageResponses);
-
+        generations.setCharacterRefImageUrl(characterRefImageUrl);
         if (Objects.isNull(imageRequest.getStyleType())) {
             generations.setStyle(ImageStyleEnum.AUTO.name());
         }
