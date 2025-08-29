@@ -30,4 +30,5 @@ public class GenerationsDTO {
     boolean selfLike;
     String colorPalette;
     String aspectRatio;
+    String characterRefImageUrl;
 }

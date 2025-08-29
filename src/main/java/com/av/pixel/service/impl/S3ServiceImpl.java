@@ -125,6 +125,8 @@ public class S3ServiceImpl implements S3Service {
         return extension;
     }
 
+
+
     public String getImageExtension (String fileName, HttpResponse<byte[]> response) {
         if (fileName.contains(".png") || fileName.contains(".jpg") || fileName.contains(".jpeg")) {
             return fileName;
