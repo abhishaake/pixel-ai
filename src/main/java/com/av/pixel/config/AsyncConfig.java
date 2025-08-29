@@ -2,6 +2,7 @@ package com.av.pixel.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.scheduling.annotation.AsyncConfigurer;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
@@ -17,8 +18,8 @@ import java.util.concurrent.ThreadPoolExecutor;
 public class AsyncConfig implements AsyncConfigurer {
 
 
-    private final static int corePoolSize = 5;
-    private final static int maxPoolSize = 10;
+    private final static int corePoolSize = 10;
+    private final static int maxPoolSize = 20;
     private final static int queueCapacity = 100;
     private final static int keepAliveSeconds = 30;
     private final static String threadNamePrefix = "async-";
@@ -26,7 +27,7 @@ public class AsyncConfig implements AsyncConfigurer {
 
     @Override
     @Bean(name = "taskExecutor")
-    public Executor getAsyncExecutor() {
+    public TaskExecutor getAsyncExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
 
         executor.setCorePoolSize(corePoolSize);
