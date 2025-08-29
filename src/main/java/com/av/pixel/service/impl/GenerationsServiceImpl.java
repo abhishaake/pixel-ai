@@ -197,6 +197,9 @@ public class GenerationsServiceImpl implements GenerationsService {
 
     String safeUploadRefImage(String userCode, MultipartFile file) {
         try{
+            if ( file == null ){
+                return null;
+            }
             String fileName = getFileName(userCode + "_ref", DateUtil.currentTimeMillis());
             return s3Service.uploadFile(fileName,file.getBytes());
         }catch (Exception e) {
