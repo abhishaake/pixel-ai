@@ -22,6 +22,7 @@ import com.av.pixel.enums.PixelModelEnum;
 import com.av.pixel.exception.Error;
 import com.av.pixel.exception.IdeogramException;
 import com.av.pixel.exception.IdeogramUnprocessableEntityException;
+import com.av.pixel.helper.AsyncUtil;
 import com.av.pixel.helper.DateUtil;
 import com.av.pixel.helper.GenerationHelper;
 import com.av.pixel.helper.TransformUtil;
@@ -50,6 +51,8 @@ import com.av.pixel.service.GenerationActionService;
 import com.av.pixel.service.S3Service;
 import com.av.pixel.service.UserCreditService;
 import com.av.pixel.service.UserService;
+import com.av.pixel.service.impl.BlockUserService;
+import com.av.pixel.service.impl.EmailService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -72,6 +75,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TreeSet;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 @Service
 @Slf4j
@@ -91,6 +96,8 @@ public class GenerationsServiceImpl implements GenerationsService {
     private final ImageCompressionService imageCompressionService;
     private final ImageFlagRepository imageFlagRepository;
     private final EmailService emailService;
+    private final AsyncUtil asyncUtil;
+    private final BlockUserService blockUserService;
 
     private static final String IMAGE_UNSAFE_LOGO = "https://av-pixel.s3.ap-south-1.amazonaws.com/image_not_safe_logo.jpeg";
 
@@ -107,29 +114,49 @@ public class GenerationsServiceImpl implements GenerationsService {
         }
 
         try {
-            UserCreditDTO userCreditDTO = userCreditService.getUserCredit(userDTO.getCode());
+            // Execute credit check and cost calculation concurrently
+            CompletableFuture<UserCreditDTO> creditFuture = asyncUtil.executeAsync(() -> {
+                UserCreditDTO userCreditDTO = userCreditService.getUserCredit(userDTO.getCode());
+                if (Objects.isNull(userCreditDTO)) {
+                    userCreditDTO = UserCreditMap.userCreditDTO(userCreditService.createNewUserCredit(userDTO.getCode()));
+                }
+                return userCreditDTO;
+            });
 
-            if (Objects.isNull(userCreditDTO)) {
-                userCreditDTO = UserCreditMap.userCreditDTO(userCreditService.createNewUserCredit(userDTO.getCode()));
-            }
+            CompletableFuture<Integer> costFuture = asyncUtil.executeAsync(() -> getCost(generateRequest));
+
+            // Wait for both operations to complete
+            UserCreditDTO userCreditDTO = creditFuture.get();
+            Integer imageGenerationCost = costFuture.get();
 
             Integer availableCredits = userCreditDTO.getAvailable();
-            Integer imageGenerationCost = getCost(generateRequest);
-
             if (availableCredits < imageGenerationCost) {
                 throw new Error(HttpStatus.PAYMENT_REQUIRED, "Not enough credits");
             }
 
             ImageRequest imageRequest = ImageMap.validateAndGetImageRequest(generateRequest);
 
-            List<ImageResponse> imageResponses = generateImage(imageRequest, userDTO.getCode());
+            // Execute image generation asynchronously
+            CompletableFuture<List<ImageResponse>> imageGenerationFuture = asyncUtil.executeAsync(() -> 
+                generateImage(imageRequest, userDTO.getCode()));
+
+            List<ImageResponse> imageResponses = imageGenerationFuture.get();
 
             if (Objects.isNull(imageResponses)) {
                 throw new Error("Some error occurred, please try again");
             }
 
-            Generations generations = generationHelper.saveUserGeneration(userDTO.getCode(), generateRequest, imageRequest, imageResponses, imageGenerationCost);
-            userCreditService.debitUserCredit(userDTO.getCode(), imageGenerationCost, OrderTypeEnum.IMAGE_GENERATION, "SERVER", generations.getId().toString());
+            // Execute database operations concurrently
+            CompletableFuture<Generations> saveGenerationFuture = asyncUtil.executeAsync(() -> 
+                generationHelper.saveUserGeneration(userDTO.getCode(), generateRequest, imageRequest, imageResponses, imageGenerationCost));
+
+            Generations generations = saveGenerationFuture.get();
+
+            // Execute credit debit asynchronously (fire and forget)
+            asyncUtil.executeAsync(() -> {
+                userCreditService.debitUserCredit(userDTO.getCode(), imageGenerationCost, OrderTypeEnum.IMAGE_GENERATION, "SERVER", generations.getId().toString());
+                return null;
+            });
 
             GenerationsDTO res = GenerationsMap.toGenerationsDTO(generations);
             assert res != null;
@@ -148,6 +175,17 @@ public class GenerationsServiceImpl implements GenerationsService {
             Thread.currentThread().interrupt();
             locker.unlock(key);
             throw new Error(e.getError());
+        }
+        catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            locker.unlock(key);
+            log.error("Thread interrupted while waiting for async operations", e);
+            throw new RuntimeException("Operation interrupted", e);
+        }
+        catch (ExecutionException e) {
+            locker.unlock(key);
+            log.error("Error executing async operations", e);
+            throw new RuntimeException("Error processing request", e);
         }
         catch (Exception e) {
             Thread.currentThread().interrupt();
@@ -174,7 +212,7 @@ public class GenerationsServiceImpl implements GenerationsService {
         }
         checkForSafeImages(imageRequest, res, userCode);
         try {
-            uploadToS3(res, userCode);
+            uploadToS3Async(res, userCode);
             return res;
         }
         catch (Exception e){
@@ -232,6 +270,42 @@ public class GenerationsServiceImpl implements GenerationsService {
         }
     }
 
+    private void uploadToS3Async (List<ImageResponse> res, String userCode) {
+        if (CollectionUtils.isEmpty(res)){
+            return;
+        }
+        
+        long epoch = DateUtil.currentTimeMillis();
+        List<CompletableFuture<Void>> uploadFutures = new ArrayList<>();
+        
+        for (int i = 0; i < res.size(); i++) {
+            final ImageResponse imageResponse = res.get(i);
+            final int idx = i;
+            
+            if (imageResponse.getIsImageSafe()) {
+                CompletableFuture<Void> uploadFuture = asyncUtil.executeAsync(() -> {
+                    try {
+                        uploadToS3(imageResponse, userCode, epoch, idx);
+                    } catch (Exception e) {
+                        log.error("Async uploadToS3 error for image {}", idx, e);
+                    }
+                    return null;
+                });
+                uploadFutures.add(uploadFuture);
+            }
+        }
+        
+        // Wait for all uploads to complete
+        try {
+            CompletableFuture.allOf(uploadFutures.toArray(new CompletableFuture[0])).get();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.error("Thread interrupted while waiting for S3 uploads", e);
+        } catch (ExecutionException e) {
+            log.error("Error during S3 uploads", e);
+        }
+    }
+
     public ImageResponse uploadToS3 (ImageResponse imageResponse, String userCode, Long epoch, int idx) {
         HttpResponse<byte[]> imageRes = s3Service.downloadImage(imageResponse.getUrl());
         String fileName = getFileName(userCode, epoch + idx);
@@ -277,24 +351,64 @@ public class GenerationsServiceImpl implements GenerationsService {
            generationsFilterRequest.setStyles(ImageStyleEnum.getEnumsForFilter(generationsFilterRequest.getStyles()));
        }
 
-        Page<Generations> generationsPage = findByFilters(generationsFilterRequest.getUserCodes(),
-                generationsFilterRequest.getCategories(),
-                generationsFilterRequest.getStyles(),
-                privacyEnum.getPrivateImage(),
-                generationsFilterRequest.getSort(),
-                PageRequest.of(generationsFilterRequest.getPage(), generationsFilterRequest.getSize()));
+        try {
+            List<String> blockedUsers = blockUserService.getBlockedUsers(userDTO.getCode());
+            
+            // Execute database query to get generations page
+            Page<Generations> generationsPage = findByFilters(generationsFilterRequest.getUserCodes(),
+                    generationsFilterRequest.getCategories(),
+                    generationsFilterRequest.getStyles(),
+                    privacyEnum.getPrivateImage(),
+                    generationsFilterRequest.getSort(),
+                    blockedUsers,
+                    PageRequest.of(generationsFilterRequest.getPage(), generationsFilterRequest.getSize()));
 
-        long totalCount = generationsPage.getTotalElements();
-        TreeSet<String> likedGenerations = null;
-        if (Objects.nonNull(userDTO) && StringUtils.isNotEmpty(userDTO.getCode())) {
-            List<String> genIds = generationsPage.getContent().stream().map(g -> g.getId().toString()).toList();
-            likedGenerations = generationActionService.getLikedGenerationsByUserCode(userDTO.getCode(), genIds);
+            long totalCount = generationsPage.getTotalElements();
+            
+            // Prepare data for concurrent execution
+            final List<String> genIds;
+            final List<String> userCodes;
+            
+            if (!CollectionUtils.isEmpty(generationsPage.getContent())) {
+                genIds = generationsPage.getContent().stream().map(g -> g.getId().toString()).toList();
+                userCodes = generationsPage.getContent().stream().map(Generations::getUserCode).toList();
+            } else {
+                genIds = new ArrayList<>();
+                userCodes = new ArrayList<>();
+            }
+
+            // Execute independent operations concurrently
+            CompletableFuture<TreeSet<String>> likedGenerationsFuture = CompletableFuture.completedFuture(null);
+            CompletableFuture<Map<String, User>> userMapFuture = CompletableFuture.completedFuture(null);
+
+            if (StringUtils.isNotEmpty(userDTO.getCode()) && !CollectionUtils.isEmpty(genIds)) {
+                likedGenerationsFuture = asyncUtil.executeAsync(() -> 
+                    generationActionService.getLikedGenerationsByUserCode(userDTO.getCode(), genIds));
+            }
+
+            if (!CollectionUtils.isEmpty(userCodes)) {
+                userMapFuture = asyncUtil.executeAsync(() -> 
+                    userService.getUserCodeVsUserMap(userCodes));
+            }
+
+            // Wait for all async operations to complete
+            TreeSet<String> likedGenerations = likedGenerationsFuture.get();
+            Map<String, User> userMap = userMapFuture.get();
+
+            return new GenerationsFilterResponse(
+                GenerationsMap.toList(generationsPage.getContent(), likedGenerations, userMap),
+                totalCount, 
+                generationsFilterRequest.getPage(), 
+                generationsPage.getNumberOfElements()
+            );
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.error("Thread interrupted while waiting for async operations", e);
+            throw new RuntimeException("Operation interrupted", e);
+        } catch (ExecutionException e) {
+            log.error("Error executing async operations", e);
+            throw new RuntimeException("Error processing request", e);
         }
-        List<String> userCodes = generationsPage.getContent().stream().map(Generations::getUserCode).toList();
-        Map<String, User> userMap = userService.getUserCodeVsUserMap(userCodes);
-
-        return new GenerationsFilterResponse(GenerationsMap.toList(generationsPage.getContent(), likedGenerations, userMap),
-                totalCount, generationsFilterRequest.getPage(), generationsPage.getNumberOfElements());
     }
 
 
@@ -303,6 +417,7 @@ public class GenerationsServiceImpl implements GenerationsService {
                                             List<String> styles,
                                             Boolean privacy,
                                             SortByRequest sortByRequest,
+                                            List<String> blockedUsers,
                                             Pageable pageable) {
 
         List<Criteria> criteriaList = new ArrayList<>();
@@ -321,6 +436,10 @@ public class GenerationsServiceImpl implements GenerationsService {
 
         if (privacy != null) {
             criteriaList.add(Criteria.where("privateImage").is(privacy));
+        }
+
+        if (!CollectionUtils.isEmpty(blockedUsers)) {
+            criteriaList.add(Criteria.where("userCode").not().in(blockedUsers));
         }
 
         Query query = new Query();
