@@ -90,6 +90,13 @@ public class UtilityController {
         return new Response<>(HttpStatus.OK, "success");
     }
 
+    @PostMapping("/reset-cache")
+    public Response<String> onApplicationReady() {
+        cacheScheduler.onApplicationReady();
+        return new Response<>(HttpStatus.OK, "success");
+    }
+
+
     @PostMapping("/s3/upload")
     public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file) {
         try {
