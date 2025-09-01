@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -68,6 +69,9 @@ public class BlockUserService {
     }
 
     public List<String> getBlockedUsers(String currentUserCode) {
+        if (StringUtils.isEmpty(currentUserCode)) {
+            return Collections.emptyList();
+        }
         List<UserBlockMapping> blockedUsers = userBlockMappingRepository.findByUserCodeAndDeletedFalse(currentUserCode);
 
         return blockedUsers.stream()
