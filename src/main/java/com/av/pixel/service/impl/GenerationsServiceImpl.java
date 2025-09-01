@@ -373,7 +373,7 @@ public class GenerationsServiceImpl implements GenerationsService {
        }
 
         try {
-            List<String> blockedUsers = blockUserService.getBlockedUsers(userDTO.getCode());
+            List<String> blockedUsers = blockUserService.getBlockedUsers(userCode);
             
             // Execute database query to get generations page
             Page<Generations> generationsPage = findByFilters(generationsFilterRequest.getUserCodes(),
@@ -402,9 +402,9 @@ public class GenerationsServiceImpl implements GenerationsService {
             CompletableFuture<TreeSet<String>> likedGenerationsFuture = CompletableFuture.completedFuture(null);
             CompletableFuture<Map<String, User>> userMapFuture = CompletableFuture.completedFuture(null);
 
-            if (StringUtils.isNotEmpty(userDTO.getCode()) && !CollectionUtils.isEmpty(genIds)) {
+            if (StringUtils.isNotEmpty(userCode) && !CollectionUtils.isEmpty(genIds)) {
                 likedGenerationsFuture = asyncUtil.executeAsync(() -> 
-                    generationActionService.getLikedGenerationsByUserCode(userDTO.getCode(), genIds));
+                    generationActionService.getLikedGenerationsByUserCode(userCode, genIds));
             }
 
             if (!CollectionUtils.isEmpty(userCodes)) {
