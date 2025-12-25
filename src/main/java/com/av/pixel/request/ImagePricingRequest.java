@@ -18,4 +18,6 @@ public class ImagePricingRequest {
     boolean privateImage;
 
     String negativePrompt;
+
+    Boolean haveCharacterFile;
 }

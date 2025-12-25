@@ -9,7 +9,9 @@ public enum PixelModelEnum {
 
     PIXEL_V1("Pixel 1.0", IdeogramModelEnum.V_1_TURBO, IdeogramModelEnum.V_1, false),
     PIXEL_V2("Pixel 2.0", IdeogramModelEnum.V_2_TURBO, IdeogramModelEnum.V_2, true),
-    PIXEL_V2A("Pixel 3.0", IdeogramModelEnum.V_2A_TURBO, IdeogramModelEnum.V_2A, true);
+    PIXEL_V2A("Pixel 3.0", IdeogramModelEnum.V_2A_TURBO, IdeogramModelEnum.V_2A, true),
+    PIXEL_V3("Pixel 4.0", IdeogramModelEnum.V_3_TURBO, IdeogramModelEnum.V_3_QUALITY, true),
+    ;
 
     @Getter
     final String value;

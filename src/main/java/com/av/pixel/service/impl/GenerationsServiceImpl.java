@@ -52,8 +52,6 @@ import com.av.pixel.service.GenerationActionService;
 import com.av.pixel.service.S3Service;
 import com.av.pixel.service.UserCreditService;
 import com.av.pixel.service.UserService;
-import com.av.pixel.service.impl.BlockUserService;
-import com.av.pixel.service.impl.EmailService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -68,6 +66,7 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
@@ -104,7 +103,7 @@ public class GenerationsServiceImpl implements GenerationsService {
     private static final String IMAGE_UNSAFE_LOGO = "https://av-pixel.s3.ap-south-1.amazonaws.com/image_not_safe_logo.jpeg";
 
     @Override
-    public GenerationsDTO generate (UserDTO userDTO, GenerateRequest generateRequest) {
+    public GenerationsDTO generate (UserDTO userDTO, GenerateRequest generateRequest, MultipartFile file) {
         log.info("generate img req {} from {}", generateRequest.getPrompt(), userDTO.getCode());
         Validator.validateGenerateRequest(generateRequest);
 
@@ -138,7 +137,7 @@ public class GenerationsServiceImpl implements GenerationsService {
                 throw new Error(HttpStatus.PAYMENT_REQUIRED, "Not enough credits");
             }
 
-            ImageRequest imageRequest = ImageMap.validateAndGetImageRequest(generateRequest);
+            ImageRequest imageRequest = ImageMap.validateAndGetImageRequest(generateRequest,file);
 
             // Execute image generation asynchronously
             CompletableFuture<List<ImageResponse>> imageGenerationFuture = asyncUtil.executeAsync(() -> 
@@ -150,18 +149,20 @@ public class GenerationsServiceImpl implements GenerationsService {
                 throw new Error("Some error occurred, please try again");
             }
 
+            final String characterRefImageUrl = safeUploadRefImage(userDTO.getCode(), file);
+
             // Execute database operations concurrently
             CompletableFuture<Generations> saveGenerationFuture = asyncUtil.executeAsync(() -> 
-                generationHelper.saveUserGeneration(userDTO.getCode(), generateRequest, imageRequest, imageResponses, imageGenerationCost));
+                generationHelper.saveUserGeneration(userDTO.getCode(), generateRequest, imageRequest, imageResponses, imageGenerationCost, characterRefImageUrl));
 
             Generations generations = saveGenerationFuture.get();
+
 
             // Execute credit debit asynchronously (fire and forget)
             asyncUtil.executeAsync(() -> {
                 userCreditService.debitUserCredit(userDTO.getCode(), imageGenerationCost, OrderTypeEnum.IMAGE_GENERATION, "SERVER", generations.getId().toString());
                 return null;
             });
-
             GenerationsDTO res = GenerationsMap.toGenerationsDTO(generations);
             assert res != null;
             res.setUserName(userDTO.getFirstName())
@@ -206,6 +207,20 @@ public class GenerationsServiceImpl implements GenerationsService {
         throw e;
     }
 
+    String safeUploadRefImage(String userCode, MultipartFile file) {
+        try{
+            if ( file == null ){
+                return null;
+            }
+            String fileName = getFileName(userCode + "_ref", DateUtil.currentTimeMillis());
+            return s3Service.uploadFile(fileName,file.getBytes());
+        }catch (Exception e) {
+            log.error("Error uploading file", e);
+            return null;
+        }
+    }
+
+
 
     private List<ImageResponse> generateImage (ImageRequest imageRequest, String userCode) {
         List<ImageResponse> res = null;
@@ -213,7 +228,11 @@ public class GenerationsServiceImpl implements GenerationsService {
             if (adminConfigService.isIdeogramClientDisabled(userCode)) {
                 return generationHelper.generateImages(imageRequest);
             }
-            res = ideogramClient.generateImages(imageRequest);
+            if(imageRequest.getModel() == IdeogramModelEnum.V_3_QUALITY || imageRequest.getModel() == IdeogramModelEnum.V_3_TURBO){
+                res = ideogramClient.generateImagesV2(imageRequest);
+            }else {
+                res = ideogramClient.generateImages(imageRequest);
+            }
         } catch (IdeogramUnprocessableEntityException e) {
             throw new Error(e.getError());
         }
@@ -484,6 +503,7 @@ public class GenerationsServiceImpl implements GenerationsService {
                 .setSeed(generateRequest.getSeed())
                 .setPrivateImage(generateRequest.getPrivateImage())
                 .setNegativePrompt(generateRequest.getNegativePrompt())
+                .setHaveCharacterFile(generateRequest.getHaveCharacterFile())
                 .setRenderOption(generateRequest.getRenderOption());
 
         ImagePricingResponse imagePricingResponse = getPricing(imagePricingRequest);
@@ -511,9 +531,10 @@ public class GenerationsServiceImpl implements GenerationsService {
         }
 
         boolean isSeed = Objects.nonNull(imagePricingRequest.getSeed());
+        boolean isCharacter = Objects.requireNonNullElse(imagePricingRequest.getHaveCharacterFile(), false);
 
         Integer finalCost = modelPricingDTO.getFinalCost(imagePricingRequest.getNoOfImages(),
-                imagePricingRequest.isPrivateImage(), isSeed, StringUtils.isNotEmpty(imagePricingRequest.getNegativePrompt()));
+                imagePricingRequest.isPrivateImage(), isSeed, StringUtils.isNotEmpty(imagePricingRequest.getNegativePrompt()),isCharacter);
 
         return new ImagePricingResponse()
                 .setFinalCost(finalCost);
@@ -521,7 +542,7 @@ public class GenerationsServiceImpl implements GenerationsService {
 
     @Override
     public ModelConfigResponse getModelConfigs () {
-        List<ModelConfig> modelConfigs = modelConfigRepository.findAllByDeletedFalse();
+        List<ModelConfig> modelConfigs = modelConfigRepository.findAllByDeletedFalseOrderByOrderDesc();
 
         if (CollectionUtils.isEmpty(modelConfigs)) {
             throw new Error("no model config found");

@@ -17,6 +17,7 @@ public enum ImageStyleEnum {
     REALISTIC("Realistic"),
     DESIGN("Design"),
     RENDER_3D("3D Art"),
+    FICTION("Fiction"),
     ANIME("Anime");
 
     @Getter

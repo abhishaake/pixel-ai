@@ -4,6 +4,8 @@ import com.av.pixel.auth.Authenticated;
 import com.av.pixel.dto.GenerationsDTO;
 import com.av.pixel.dto.UserDTO;
 import com.av.pixel.enums.PermissionEnum;
+import com.av.pixel.exception.Error;
+import com.av.pixel.helper.TransformUtil;
 import com.av.pixel.request.GenerateRequest;
 import com.av.pixel.request.GenerationsFilterRequest;
 import com.av.pixel.request.ImageActionRequest;
@@ -16,13 +18,10 @@ import com.av.pixel.service.GenerationsService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import static com.av.pixel.mapper.ResponseMapper.response;
 
@@ -50,7 +49,21 @@ public class ImagesController {
     @PostMapping("")
     @Authenticated
     public ResponseEntity<Response<GenerationsDTO>> generate (UserDTO userDTO, @RequestBody GenerateRequest generateRequest) {
-        return response(imagesService.generate(userDTO, generateRequest), HttpStatus.CREATED);
+        return response(imagesService.generate(userDTO, generateRequest,null), HttpStatus.CREATED);
+    }
+
+    @PostMapping(value = "/generate/v2")
+    @Authenticated
+    public ResponseEntity<Response<GenerationsDTO>> generate(
+            UserDTO userDTO,
+            @RequestParam(value = "body") String generateRequest,
+            @RequestParam(value = "character_reference_images", required = false) MultipartFile file
+    ) {
+        GenerateRequest generateRequestObject = TransformUtil.fromJson(generateRequest, GenerateRequest.class);
+        if(generateRequestObject == null) {
+            throw new Error(HttpStatus.BAD_REQUEST, "Invalid request");
+        }
+        return response(imagesService.generate(userDTO, generateRequestObject, file), HttpStatus.CREATED);
     }
 
     @Authenticated

@@ -32,4 +32,7 @@ public class ModelPricing extends BaseEntity {
     Double negativePromptCost;
     Double negativePromptCostMultiplier;
 
+    Double characterPrice;
+    Double characterMultiplier;
+
 }

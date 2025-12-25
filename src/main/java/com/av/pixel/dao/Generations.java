@@ -28,6 +28,7 @@ public class Generations extends BaseEntity {
     String style;
     String colorPalette;
     String aspectRatio;
+    String characterRefImageUrl;
     Long epoch;
     Long views;
 }
