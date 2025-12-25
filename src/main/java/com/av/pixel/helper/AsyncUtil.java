@@ -1,5 +1,8 @@
 package com.av.pixel.helper;
 
+import com.av.pixel.exception.Error;
+import com.av.pixel.exception.IdeogramException;
+import com.av.pixel.exception.IdeogramServerException;
 import com.av.pixel.exception.IdeogramUnprocessableEntityException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,9 +33,6 @@ public class AsyncUtil {
                 future.complete(result);
             } catch (Exception e) {
                 log.error("Error executing async task", e);
-                if (e.getCause() instanceof IdeogramUnprocessableEntityException ce) {
-                    throw ce;
-                }
                 future.completeExceptionally(e);
             }
         });
