@@ -27,6 +27,7 @@ import com.av.pixel.helper.AsyncUtil;
 import com.av.pixel.helper.DateUtil;
 import com.av.pixel.helper.GenerationHelper;
 import com.av.pixel.helper.TransformUtil;
+import com.av.pixel.helper.UserCreditHelper;
 import com.av.pixel.helper.Validator;
 import com.av.pixel.mapper.GenerationsMap;
 import com.av.pixel.mapper.ModelConfigMap;
@@ -77,6 +78,7 @@ import java.util.Objects;
 import java.util.TreeSet;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
 @Slf4j
@@ -98,6 +100,7 @@ public class GenerationsServiceImpl implements GenerationsService {
     private final EmailService emailService;
     private final AsyncUtil asyncUtil;
     private final BlockUserService blockUserService;
+    private final UserCreditHelper userCreditHelper;
 
     private static final String IMAGE_UNSAFE_LOGO = "https://av-pixel.s3.ap-south-1.amazonaws.com/image_not_safe_logo.jpeg";
 
@@ -112,6 +115,8 @@ public class GenerationsServiceImpl implements GenerationsService {
         if (!locked) {
             throw new Error("1 Generation already in progress, Please wait..");
         }
+
+        AtomicInteger availableCredits = new AtomicInteger(0);
 
         try {
             // Execute credit check and cost calculation concurrently
@@ -129,8 +134,8 @@ public class GenerationsServiceImpl implements GenerationsService {
             UserCreditDTO userCreditDTO = creditFuture.get();
             Integer imageGenerationCost = costFuture.get();
 
-            Integer availableCredits = userCreditDTO.getAvailable();
-            if (availableCredits < imageGenerationCost) {
+            availableCredits.set(userCreditDTO.getAvailable());
+            if (availableCredits.get() < imageGenerationCost) {
                 throw new Error(HttpStatus.PAYMENT_REQUIRED, "Not enough credits");
             }
 
@@ -138,7 +143,7 @@ public class GenerationsServiceImpl implements GenerationsService {
 
             // Execute image generation asynchronously
             CompletableFuture<List<ImageResponse>> imageGenerationFuture = asyncUtil.executeAsync(() -> 
-                generateImage(imageRequest, userDTO.getCode()));
+                generateImage(imageRequest, userDTO.getCode(), availableCredits.get()));
 
             List<ImageResponse> imageResponses = imageGenerationFuture.get();
 
@@ -203,6 +208,12 @@ public class GenerationsServiceImpl implements GenerationsService {
         }
     }
 
+    private void throwCustomUnprocessableEntityException(Integer credits, IdeogramUnprocessableEntityException e) {
+        if (credits == null || credits <= userCreditHelper.getDefaultUserCredit()) {
+            throw new Error("The images for the given prompt may not be available on free version");
+        }
+    }
+
     String safeUploadRefImage(String userCode, MultipartFile file) {
         try{
             if ( file == null ){
@@ -218,7 +229,7 @@ public class GenerationsServiceImpl implements GenerationsService {
 
 
 
-    private List<ImageResponse> generateImage (ImageRequest imageRequest, String userCode) {
+    private List<ImageResponse> generateImage (ImageRequest imageRequest, String userCode, int availableCredits) {
         List<ImageResponse> res = null;
         try {
             if (adminConfigService.isIdeogramClientDisabled(userCode)) {
@@ -230,6 +241,7 @@ public class GenerationsServiceImpl implements GenerationsService {
                 res = ideogramClient.generateImages(imageRequest);
             }
         } catch (IdeogramUnprocessableEntityException e) {
+            throwCustomUnprocessableEntityException(availableCredits, e);
             throw new Error(e.getError());
         }
         catch (IdeogramException e) {
