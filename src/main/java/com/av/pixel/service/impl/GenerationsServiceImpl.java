@@ -21,6 +21,7 @@ import com.av.pixel.enums.OrderTypeEnum;
 import com.av.pixel.enums.PixelModelEnum;
 import com.av.pixel.exception.Error;
 import com.av.pixel.exception.IdeogramException;
+import com.av.pixel.exception.IdeogramServerException;
 import com.av.pixel.exception.IdeogramUnprocessableEntityException;
 import com.av.pixel.helper.AsyncUtil;
 import com.av.pixel.helper.DateUtil;
@@ -186,6 +187,13 @@ public class GenerationsServiceImpl implements GenerationsService {
         catch (ExecutionException e) {
             locker.unlock(key);
             log.error("Error executing async operations", e);
+            if (e.getCause() instanceof IdeogramUnprocessableEntityException ce) {
+                throw ce;
+            } else if (e.getCause() instanceof Error ce) {
+                throw ce;
+            } else if (e.getCause() instanceof IdeogramServerException ce) {
+                throw ce;
+            }
             throw new RuntimeException("Error processing request", e);
         }
         catch (Exception e) {
