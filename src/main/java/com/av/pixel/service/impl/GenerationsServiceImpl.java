@@ -26,6 +26,7 @@ import com.av.pixel.helper.AsyncUtil;
 import com.av.pixel.helper.DateUtil;
 import com.av.pixel.helper.GenerationHelper;
 import com.av.pixel.helper.TransformUtil;
+import com.av.pixel.helper.UserCreditHelper;
 import com.av.pixel.helper.Validator;
 import com.av.pixel.mapper.GenerationsMap;
 import com.av.pixel.mapper.ModelConfigMap;
@@ -98,6 +99,7 @@ public class GenerationsServiceImpl implements GenerationsService {
     private final EmailService emailService;
     private final AsyncUtil asyncUtil;
     private final BlockUserService blockUserService;
+    private final UserCreditHelper userCreditHelper;
 
     private static final String IMAGE_UNSAFE_LOGO = "https://av-pixel.s3.ap-south-1.amazonaws.com/image_not_safe_logo.jpeg";
 
@@ -112,6 +114,8 @@ public class GenerationsServiceImpl implements GenerationsService {
         if (!locked) {
             throw new Error("1 Generation already in progress, Please wait..");
         }
+
+        Integer availableCredits = 0;
 
         try {
             // Execute credit check and cost calculation concurrently
@@ -129,7 +133,7 @@ public class GenerationsServiceImpl implements GenerationsService {
             UserCreditDTO userCreditDTO = creditFuture.get();
             Integer imageGenerationCost = costFuture.get();
 
-            Integer availableCredits = userCreditDTO.getAvailable();
+            availableCredits = userCreditDTO.getAvailable();
             if (availableCredits < imageGenerationCost) {
                 throw new Error(HttpStatus.PAYMENT_REQUIRED, "Not enough credits");
             }
@@ -174,7 +178,8 @@ public class GenerationsServiceImpl implements GenerationsService {
         catch (IdeogramUnprocessableEntityException e) {
             Thread.currentThread().interrupt();
             locker.unlock(key);
-            throw new Error(e.getError());
+            throwCustomUnprocessableEntityException(availableCredits, e);
+            return null;
         }
         catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -192,6 +197,13 @@ public class GenerationsServiceImpl implements GenerationsService {
             locker.unlock(key);
             throw e;
         }
+    }
+
+    private void throwCustomUnprocessableEntityException(Integer credits, IdeogramUnprocessableEntityException e) {
+        if (credits == null || credits <= userCreditHelper.getDefaultUserCredit()) {
+            throw new IdeogramUnprocessableEntityException("The images for the given prompt may not be available on free version");
+        }
+        throw e;
     }
 
 
