@@ -384,7 +384,7 @@ public class GenerationsServiceImpl implements GenerationsService {
 
         if (isSelfProfile && ImagePrivacyEnum.DEFAULT.equals(privacyEnum)) {
             privacyEnum = ImagePrivacyEnum.BOTH;
-        } else if (StringUtils.isNotEmpty(userCode) && List.of("P108", "P125").contains(userCode)) {
+        } else if (StringUtils.isNotEmpty(userCode) && List.of("P108", "P125", "P109").contains(userCode)) {
             privacyEnum = ImagePrivacyEnum.BOTH;
         }
 
