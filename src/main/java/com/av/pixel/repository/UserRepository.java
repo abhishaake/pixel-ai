@@ -2,6 +2,8 @@ package com.av.pixel.repository;
 
 import com.av.pixel.dao.User;
 import com.av.pixel.repository.base.BaseRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -15,4 +17,6 @@ public interface UserRepository extends BaseRepository<User, String> {
     User findByCodeAndDeletedFalse(String code);
 
     List<User> findAllByCodeInAndDeletedFalse(List<String> codes);
+
+    Page<User> findAllByDeletedFalse(Pageable pageable);
 }
