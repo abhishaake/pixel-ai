@@ -10,4 +10,6 @@ import org.springframework.stereotype.Repository;
 public interface EmailTrackingEventRepository extends BaseRepository<EmailTrackingEvent, ObjectId> {
 
     boolean existsByEmailIdAndEventType(String emailId, EmailTrackingEventType eventType);
+
+    boolean existsByEmailIdAndEventTypeAndPlatform(String emailId, EmailTrackingEventType eventType, String platform);
 }

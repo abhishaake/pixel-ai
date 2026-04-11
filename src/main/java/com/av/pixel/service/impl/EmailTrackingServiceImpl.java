@@ -146,7 +146,7 @@ public class EmailTrackingServiceImpl implements EmailTrackingService {
         try {
             String emailId = event.getEmailId();
             if (StringUtils.isNotEmpty(emailId)
-                    && emailTrackingEventRepository.existsByEmailIdAndEventType(emailId, event.getEventType())) {
+                    && emailTrackingEventRepository.existsByEmailIdAndEventTypeAndPlatform(emailId, event.getEventType(), event.getPlatform())) {
                 return;
             }
             emailTrackingEventRepository.save(event);
