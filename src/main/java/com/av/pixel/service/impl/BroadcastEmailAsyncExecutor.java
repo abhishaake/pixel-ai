@@ -18,7 +18,10 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Component
 @RequiredArgsConstructor
@@ -37,21 +40,21 @@ public class BroadcastEmailAsyncExecutor {
 
     @Async
     public void execute(BroadcastEmailRequest request) {
-        String subject = resolveSubject(request.getSubject());
         if (SendToEnum.USER.equals(request.getSendTo())) {
-            sendToSingleUser(request, subject);
+            sendToSingleUser(request);
             return;
         }
-        sendToAllUsers(request, subject);
+        sendToAllUsers(request);
     }
 
-    private void sendToSingleUser(BroadcastEmailRequest request, String subject) {
+    private void sendToSingleUser(BroadcastEmailRequest request) {
         User user = userRepository.findByEmailAndDeletedFalse(request.getEmail());
+        String subject = pickSubject(request);
         String body = applyVariables(request.getHtml(), request.getVariableNames(), user);
         sendHtml(request.getEmail(), subject, body);
     }
 
-    private void sendToAllUsers(BroadcastEmailRequest request, String subject) {
+    private void sendToAllUsers(BroadcastEmailRequest request) {
         int pageNumber = 0;
         Page<User> page;
         do {
@@ -60,6 +63,7 @@ public class BroadcastEmailAsyncExecutor {
                 if (StringUtils.isEmpty(user.getEmail())) {
                     continue;
                 }
+                String subject = pickSubject(request);
                 String body = applyVariables(request.getHtml(), request.getVariableNames(), user);
                 sendHtml(user.getEmail(), subject, body);
             }
@@ -79,6 +83,25 @@ public class BroadcastEmailAsyncExecutor {
         }
     }
 
+    private String pickSubject(BroadcastEmailRequest request) {
+        List<String> subjects = request.getSubjects();
+        if (!CollectionUtils.isEmpty(subjects)) {
+            List<String> candidates = new ArrayList<>();
+            for (String s : subjects) {
+                if (StringUtils.isNotEmpty(s)) {
+                    String t = s.trim();
+                    if (StringUtils.isNotEmpty(t)) {
+                        candidates.add(t);
+                    }
+                }
+            }
+            if (!candidates.isEmpty()) {
+                return candidates.get(ThreadLocalRandom.current().nextInt(candidates.size()));
+            }
+        }
+        return resolveSubject(request.getSubject());
+    }
+
     private String resolveSubject(String subject) {
         return StringUtils.isEmpty(subject) ? DEFAULT_SUBJECT : subject.trim();
     }
@@ -88,9 +111,18 @@ public class BroadcastEmailAsyncExecutor {
             return html;
         }
         String result = html;
+        String emailIdentifier = null;
         for (String name : variableNames) {
             EmailTemplateVariable variable = EmailTemplateVariable.fromName(name);
-            String value = variable.resolve(user);
+            String value;
+            if (variable == EmailTemplateVariable.EMAIL_IDENTIFIER) {
+                if (emailIdentifier == null) {
+                    emailIdentifier = UUID.randomUUID().toString();
+                }
+                value = emailIdentifier;
+            } else {
+                value = variable.resolve(user);
+            }
             result = result.replace("{{" + variable.name() + "}}", value);
         }
         return result;

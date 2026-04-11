@@ -27,8 +27,10 @@ public class EmailTrackingController {
             @RequestParam String cid,
             @RequestParam String redirect,
             @RequestParam(required = false) String platform,
+            @RequestParam(value = "email_id", required = false) String emailId,
             HttpServletRequest request) {
-        URI location = emailTrackingService.trackClickAndResolveRedirect(uid, cid, redirect, platform, request);
+        URI location = emailTrackingService.trackClickAndResolveRedirect(uid, cid, redirect, platform, emailId,
+                request);
         return ResponseEntity.status(HttpStatus.FOUND).location(location).build();
     }
 
@@ -36,8 +38,9 @@ public class EmailTrackingController {
     public ResponseEntity<byte[]> open(
             @RequestParam String uid,
             @RequestParam String cid,
+            @RequestParam(value = "email_id", required = false) String emailId,
             HttpServletRequest request) {
-        emailTrackingService.trackOpen(uid, cid, request);
+        emailTrackingService.trackOpen(uid, cid, emailId, request);
         byte[] body = emailTrackingService.transparentTrackingGif();
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.IMAGE_GIF);

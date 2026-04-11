@@ -9,6 +9,7 @@ import io.micrometer.common.util.StringUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -35,19 +36,21 @@ public class EmailTrackingServiceImpl implements EmailTrackingService {
 
     @Override
     public URI trackClickAndResolveRedirect(String uid, String cid, String redirect, String platform,
-                                            HttpServletRequest request) {
+                                            String emailId, HttpServletRequest request) {
         validatePlatform(platform);
         URI target = validateAndParseRedirect(redirect);
         String ua = emptyIfNull(request.getHeader("User-Agent"));
         String ip = clientIp(request);
         String platformLog = normalizePlatformForLog(platform);
+        String emailIdNorm = normalizeEmailId(emailId);
         Instant ts = Instant.now();
-        log.info("emailClick userId={} campaignId={} platform={} timestamp={} userAgent={} clientIp={}",
-                uid, cid, platformLog, ts, ua, ip);
+        log.info("emailClick userId={} campaignId={} emailId={} platform={} timestamp={} userAgent={} clientIp={}",
+                uid, cid, emptyIfNull(emailIdNorm), platformLog, ts, ua, ip);
         persist(new EmailTrackingEvent()
                 .setEventType(EmailTrackingEventType.CLICK)
                 .setUserId(uid)
                 .setCampaignId(cid)
+                .setEmailId(emailIdNorm)
                 .setPlatform(platformLog.isEmpty() ? null : platformLog)
                 .setRedirectUrl(target.toString())
                 .setUserAgent(ua)
@@ -57,16 +60,18 @@ public class EmailTrackingServiceImpl implements EmailTrackingService {
     }
 
     @Override
-    public void trackOpen(String uid, String cid, HttpServletRequest request) {
+    public void trackOpen(String uid, String cid, String emailId, HttpServletRequest request) {
         String ua = emptyIfNull(request.getHeader("User-Agent"));
         String ip = clientIp(request);
+        String emailIdNorm = normalizeEmailId(emailId);
         Instant ts = Instant.now();
-        log.info("emailOpen userId={} campaignId={} timestamp={} userAgent={} clientIp={}",
-                uid, cid, ts, ua, ip);
+        log.info("emailOpen userId={} campaignId={} emailId={} timestamp={} userAgent={} clientIp={}",
+                uid, cid, emptyIfNull(emailIdNorm), ts, ua, ip);
         persist(new EmailTrackingEvent()
                 .setEventType(EmailTrackingEventType.OPEN)
                 .setUserId(uid)
                 .setCampaignId(cid)
+                .setEmailId(emailIdNorm)
                 .setUserAgent(ua)
                 .setClientIp(ip)
                 .setEventTimestamp(ts));
@@ -129,9 +134,24 @@ public class EmailTrackingServiceImpl implements EmailTrackingService {
         return s == null ? "" : s;
     }
 
+    private static String normalizeEmailId(String emailId) {
+        if (emailId == null) {
+            return null;
+        }
+        String trimmed = emailId.trim();
+        return StringUtils.isEmpty(trimmed) ? null : trimmed;
+    }
+
     private void persist(EmailTrackingEvent event) {
         try {
+            String emailId = event.getEmailId();
+            if (StringUtils.isNotEmpty(emailId)
+                    && emailTrackingEventRepository.existsByEmailIdAndEventType(emailId, event.getEventType())) {
+                return;
+            }
             emailTrackingEventRepository.save(event);
+        } catch (DuplicateKeyException e) {
+            log.debug("Duplicate email tracking skipped emailId={} type={}", event.getEmailId(), event.getEventType());
         } catch (Exception e) {
             log.error("Failed to persist email tracking event type={} userId={} campaignId={}",
                     event.getEventType(), event.getUserId(), event.getCampaignId(), e);

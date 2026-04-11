@@ -26,7 +26,11 @@ public enum EmailTemplateVariable {
     USER_CODE(user -> user == null || StringUtils.isEmpty(user.getCode()) ? "" : user.getCode()),
     USER_FIRST_NAME(user -> user == null ? "" : emptyIfNull(user.getFirstName())),
     USER_LAST_NAME(user -> user == null ? "" : emptyIfNull(user.getLastName())),
-    USER_PHONE(user -> user == null ? "" : emptyIfNull(user.getPhone()));
+    USER_PHONE(user -> user == null ? "" : emptyIfNull(user.getPhone())),
+    /**
+     * Placeholder replaced per outbound email with a fresh UUID in the broadcast sender (not from {@link #resolve}).
+     */
+    EMAIL_IDENTIFIER(user -> "");
 
     private final Function<User, String> resolver;
 
