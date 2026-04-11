@@ -50,21 +50,24 @@ public class BroadcastEmailAsyncExecutor {
     private void sendToSingleUser(BroadcastEmailRequest request) {
         User user = userRepository.findByEmailAndDeletedFalse(request.getEmail());
         String subject = pickSubject(request);
-        String body = applyVariables(request.getHtml(), request.getVariableNames(), user);
+        String body = applyVariables(request.getHtml(), request.getVariableNames(), user, "sub0_");
         sendHtml(request.getEmail(), subject, body);
     }
 
     private void sendToAllUsers(BroadcastEmailRequest request) {
         int pageNumber = 0;
         Page<User> page;
+        List<String> subjectCandidates = getSubjectCandidates(request);
         do {
             page = userRepository.findAllByDeletedFalse(PageRequest.of(pageNumber, BATCH_SIZE));
             for (User user : page.getContent()) {
                 if (StringUtils.isEmpty(user.getEmail())) {
                     continue;
                 }
-                String subject = pickSubject(request);
-                String body = applyVariables(request.getHtml(), request.getVariableNames(), user);
+                int subjectIdx = getSubjectIdx(subjectCandidates);
+                String subject = subjectCandidates.get(subjectIdx);
+                String subPrefix = "sub" + subjectIdx + "_";
+                String body = applyVariables(request.getHtml(), request.getVariableNames(), user, subPrefix);
                 sendHtml(user.getEmail(), subject, body);
             }
             if (page.hasNext()) {
@@ -81,6 +84,26 @@ public class BroadcastEmailAsyncExecutor {
             Thread.currentThread().interrupt();
             log.warn("Broadcast email batch delay interrupted");
         }
+    }
+
+    private int getSubjectIdx(List<String> candidates) {
+        return ThreadLocalRandom.current().nextInt(candidates.size());
+    }
+
+    private List<String> getSubjectCandidates(BroadcastEmailRequest request) {
+        List<String> subjects = request.getSubjects();
+        List<String> candidates = new ArrayList<>();
+        if (!CollectionUtils.isEmpty(subjects)) {
+            for (String s : subjects) {
+                if (StringUtils.isNotEmpty(s)) {
+                    String t = s.trim();
+                    if (StringUtils.isNotEmpty(t)) {
+                        candidates.add(t);
+                    }
+                }
+            }
+        }
+        return candidates;
     }
 
     private String pickSubject(BroadcastEmailRequest request) {
@@ -106,7 +129,7 @@ public class BroadcastEmailAsyncExecutor {
         return StringUtils.isEmpty(subject) ? DEFAULT_SUBJECT : subject.trim();
     }
 
-    private String applyVariables(String html, List<String> variableNames, User user) {
+    private String applyVariables(String html, List<String> variableNames, User user, String subPrefix) {
         if (StringUtils.isEmpty(html) || CollectionUtils.isEmpty(variableNames)) {
             return html;
         }
@@ -118,6 +141,7 @@ public class BroadcastEmailAsyncExecutor {
             if (variable == EmailTemplateVariable.EMAIL_IDENTIFIER) {
                 if (emailIdentifier == null) {
                     emailIdentifier = UUID.randomUUID().toString();
+                    emailIdentifier = subPrefix + emailIdentifier;
                 }
                 value = emailIdentifier;
             } else {
