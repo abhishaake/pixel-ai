@@ -7,9 +7,9 @@ import java.net.URI;
 public interface EmailTrackingService {
 
     URI trackClickAndResolveRedirect(String uid, String cid, String redirect, String platform,
-                                     HttpServletRequest request);
+                                     String emailId, HttpServletRequest request);
 
-    void trackOpen(String uid, String cid, HttpServletRequest request);
+    void trackOpen(String uid, String cid, String emailId, HttpServletRequest request);
 
     byte[] transparentTrackingGif();
 }
