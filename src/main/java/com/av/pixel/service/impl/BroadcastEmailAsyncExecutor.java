@@ -5,10 +5,12 @@ import com.av.pixel.enums.EmailTemplateVariable;
 import com.av.pixel.enums.SendToEnum;
 import com.av.pixel.repository.UserRepository;
 import com.av.pixel.request.BroadcastEmailRequest;
+import com.av.pixel.service.SesEmailService;
 import io.micrometer.common.util.StringUtils;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -34,9 +36,13 @@ public class BroadcastEmailAsyncExecutor {
 
     private final JavaMailSender javaMailSender;
     private final UserRepository userRepository;
+    private final ObjectProvider<SesEmailService> sesEmailServiceProvider;
 
     @Value("${spring.mail.username}")
     private String sender;
+
+    @Value("${app.mail.sender-display-name:}")
+    private String senderDisplayName;
 
     @Async
     public void execute(BroadcastEmailRequest request) {
@@ -153,10 +159,23 @@ public class BroadcastEmailAsyncExecutor {
     }
 
     private void sendHtml(String to, String subject, String htmlBody) {
+        SesEmailService sesEmailService = sesEmailServiceProvider.getIfAvailable();
+        if (sesEmailService != null) {
+            try {
+                sesEmailService.sendEmail(to, subject, htmlBody);
+            } catch (Exception e) {
+                log.error("Failed to send broadcast HTML email via Amazon SES to {}", to, e);
+            }
+            return;
+        }
         try {
             MimeMessage message = javaMailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-            helper.setFrom(sender);
+            if (StringUtils.isNotEmpty(senderDisplayName)) {
+                helper.setFrom(sender, senderDisplayName.trim());
+            } else {
+                helper.setFrom(sender);
+            }
             helper.setTo(to);
             helper.setSubject(subject);
             helper.setText(htmlBody, true);

@@ -1,7 +1,6 @@
 package com.av.pixel.service.impl;
 
 import com.av.pixel.dao.User;
-import com.av.pixel.dto.UserDTO;
 import com.av.pixel.repository.GenerationHistoryRepository;
 import com.av.pixel.repository.UserRepository;
 import io.micrometer.common.util.StringUtils;
@@ -28,6 +27,9 @@ public class EmailService {
     @Value("${spring.mail.username}")
     private String sender;
 
+    @Value("${app.mail.sender-display-name:}")
+    private String senderDisplayName;
+
     @Value("${spring.mail.receiver}")
     private String receiver;
 
@@ -37,7 +39,7 @@ public class EmailService {
 
         for(String rec : recipients) {
             SimpleMailMessage mailMessage = new SimpleMailMessage();
-            mailMessage.setFrom(sender);
+            applyFromWithDisplayName(mailMessage);
             mailMessage.setTo(rec);
             mailMessage.setText(body);
             mailMessage.setSubject("Pixel Exception");
@@ -51,7 +53,7 @@ public class EmailService {
 
         for(String rec : recipients) {
             SimpleMailMessage mailMessage = new SimpleMailMessage();
-            mailMessage.setFrom(sender);
+            applyFromWithDisplayName(mailMessage);
             mailMessage.setTo(rec);
             mailMessage.setText(body);
             mailMessage.setSubject("Pixel Payment Exception");
@@ -65,7 +67,7 @@ public class EmailService {
 
         for(String rec : recipients) {
             SimpleMailMessage mailMessage = new SimpleMailMessage();
-            mailMessage.setFrom(sender);
+            applyFromWithDisplayName(mailMessage);
             mailMessage.setTo(rec);
             mailMessage.setText(body);
             mailMessage.setSubject("Pixel Payment");
@@ -84,7 +86,7 @@ public class EmailService {
 
         for (String rec : recipients) {
             SimpleMailMessage mailMessage = new SimpleMailMessage();
-            mailMessage.setFrom(sender);
+            applyFromWithDisplayName(mailMessage);
             mailMessage.setTo(rec);
             mailMessage.setText(body);
             mailMessage.setSubject("Pixel : Milestone : " + userCode);
@@ -111,7 +113,7 @@ public class EmailService {
 
         for(String rec : recipients) {
             SimpleMailMessage mailMessage = new SimpleMailMessage();
-            mailMessage.setFrom(sender);
+            applyFromWithDisplayName(mailMessage);
             mailMessage.setTo(rec);
             mailMessage.setText(body + extBody);
             mailMessage.setSubject("Pixel Payment" + header);
@@ -128,5 +130,13 @@ public class EmailService {
             log.error("send email error", e);
         }
         return null;
+    }
+
+    private void applyFromWithDisplayName(SimpleMailMessage mailMessage) {
+        if (StringUtils.isNotEmpty(senderDisplayName)) {
+            mailMessage.setFrom("\"" + senderDisplayName.trim() + "\" <" + sender + ">");
+        } else {
+            mailMessage.setFrom(sender);
+        }
     }
 }
