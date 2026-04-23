@@ -5,6 +5,7 @@ import com.av.pixel.helper.IdeogramCircuitBreaker;
 import com.av.pixel.request.ideogram.BaseRequest;
 import com.av.pixel.request.ideogram.ImageRequest;
 import com.av.pixel.response.ideogram.ImageResponse;
+import com.av.pixel.service.SesEmailService;
 import com.av.pixel.service.impl.EmailService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;
@@ -29,8 +30,8 @@ public class IdeogramClient extends IdeogramBaseClient{
     final RestTemplate restTemplate;
     final IdeogramCircuitBreaker circuitBreaker;
 
-    public IdeogramClient (RestTemplate restTemplate, EmailService emailService) {
-        super(emailService);
+    public IdeogramClient (RestTemplate restTemplate, EmailService emailService, SesEmailService sesEmailService) {
+        super(emailService, sesEmailService);
         this.restTemplate = restTemplate;
         this.circuitBreaker = new IdeogramCircuitBreaker(2, 180000);
     }
