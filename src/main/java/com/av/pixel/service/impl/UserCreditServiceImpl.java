@@ -9,6 +9,7 @@ import com.av.pixel.enums.OrderTypeEnum;
 import com.av.pixel.helper.UserCreditHelper;
 import com.av.pixel.mapper.UserCreditMap;
 import com.av.pixel.repository.UserCreditRepository;
+import com.av.pixel.service.SesEmailService;
 import com.av.pixel.service.TransactionService;
 import com.av.pixel.service.UserCreditService;
 import lombok.AllArgsConstructor;
@@ -26,6 +27,7 @@ public class UserCreditServiceImpl implements UserCreditService {
     private final UserCreditHelper userCreditHelper;
     private final TransactionService transactionService;
     private final EmailService emailService;
+    private final SesEmailService sesEmailService;
 
     @Override
     public UserCredit createNewUserCredit (User user) {
@@ -91,7 +93,7 @@ public class UserCreditServiceImpl implements UserCreditService {
         transactionService.saveTransaction(userCode, available, used, userCredit.getAvailable(), orderType,
                 orderId, null, OrderStatusEnum.SUCCESS, null, source, null);
 
-        emailService.sendMilestoneMail(userCode);
+        sesEmailService.sendMilestoneMail(userCode);
 
         return userCreditDTO;
     }

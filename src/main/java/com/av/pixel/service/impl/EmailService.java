@@ -3,6 +3,7 @@ package com.av.pixel.service.impl;
 import com.av.pixel.dao.User;
 import com.av.pixel.repository.GenerationHistoryRepository;
 import com.av.pixel.repository.UserRepository;
+import com.av.pixel.service.SesEmailService;
 import io.micrometer.common.util.StringUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +24,7 @@ public class EmailService {
     private final JavaMailSender javaMailSender;
     private final UserRepository userRepository;
     private final GenerationHistoryRepository generationHistoryRepository;
+    private final SesEmailService sesEmailService;
 
     @Value("${spring.mail.username}")
     private String sender;
@@ -49,16 +51,17 @@ public class EmailService {
 
     @Async
     public void sendPaymentErrorMail (String message, String body) {
-        List<String> recipients = List.of(receiver.split(","));
-
-        for(String rec : recipients) {
-            SimpleMailMessage mailMessage = new SimpleMailMessage();
-            applyFromWithDisplayName(mailMessage);
-            mailMessage.setTo(rec);
-            mailMessage.setText(body);
-            mailMessage.setSubject("Pixel Payment Exception");
-            sendSimpleMail(mailMessage);
-        }
+        sesEmailService.sendPaymentErrorMail(message, body);
+//        List<String> recipients = List.of(receiver.split(","));
+//
+//        for(String rec : recipients) {
+//            SimpleMailMessage mailMessage = new SimpleMailMessage();
+//            applyFromWithDisplayName(mailMessage);
+//            mailMessage.setTo(rec);
+//            mailMessage.setText(body);
+//            mailMessage.setSubject("Pixel Payment Exception");
+//            sendSimpleMail(mailMessage);
+//        }
     }
 
     @Async

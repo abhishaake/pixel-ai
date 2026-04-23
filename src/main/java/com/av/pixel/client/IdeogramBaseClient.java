@@ -5,6 +5,7 @@ import com.av.pixel.exception.IdeogramServerException;
 import com.av.pixel.exception.IdeogramUnprocessableEntityException;
 import com.av.pixel.helper.TransformUtil;
 import com.av.pixel.response.ideogram.BaseResponse;
+import com.av.pixel.service.SesEmailService;
 import com.av.pixel.service.impl.EmailService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -35,9 +36,11 @@ public class IdeogramBaseClient {
     private String API_KEY;
 
     EmailService emailService;
+    SesEmailService sesEmailService;
 
-    public IdeogramBaseClient (EmailService emailService) {
+    public IdeogramBaseClient (EmailService emailService, SesEmailService sesEmailService) {
         this.emailService = emailService;
+        this.sesEmailService = sesEmailService;
     }
 
     public <T> List<T> exchange(RestTemplate restTemplate, String url, HttpMethod httpMethod, Object requestBody, HttpHeaders httpHeaders, ParameterizedTypeReference<BaseResponse<T>> type){
@@ -148,6 +151,6 @@ public class IdeogramBaseClient {
 
         String body = "[CRITICAL] ideogram exception for url " + url + " \n\n requestBody: " + TransformUtil.toJson(requestBody) + "\n\n code : " + statusCode.value() + " \n\n text : " + statusText + " \n\n exception: " + exMessage + " \n\n response body " + responseBody;
         body += "\n \n \n exception: " + TransformUtil.toJson(Arrays.stream(trace).limit(10).collect(Collectors.toList()));
-        emailService.sendErrorMail(body);
+        sesEmailService.sendErrorMail(body);
     }
 }

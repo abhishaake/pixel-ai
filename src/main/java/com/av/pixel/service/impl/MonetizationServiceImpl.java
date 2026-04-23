@@ -15,6 +15,7 @@ import com.av.pixel.request.PaymentVerificationRequest;
 import com.av.pixel.response.PaymentVerificationResponse;
 import com.av.pixel.service.MonetizationService;
 import com.av.pixel.service.NotificationService;
+import com.av.pixel.service.SesEmailService;
 import com.av.pixel.service.TransactionService;
 import com.av.pixel.service.UserCreditService;
 import io.micrometer.common.util.StringUtils;
@@ -37,6 +38,7 @@ public class MonetizationServiceImpl implements MonetizationService {
     private final RLock rLock;
     private final NotificationService notificationService;
     private final EmailService emailService;
+    private final SesEmailService sesEmailService;
 
     @Override
     public void handleAdPayment (String userCode, String adIdentifier, String adTxnId, String timestamp) {
@@ -125,7 +127,7 @@ public class MonetizationServiceImpl implements MonetizationService {
 
                 if (Objects.isNull(packageInfo)) {
                     saveErrorTransaction(transaction, "package not found");
-                    emailService.sendPaymentErrorMail("package not found", TransformUtil.toJson(paymentVerificationRequest));
+                    sesEmailService.sendPaymentErrorMail("package not found", TransformUtil.toJson(paymentVerificationRequest));
                     return new PaymentVerificationResponse();
                 }
 
@@ -134,7 +136,7 @@ public class MonetizationServiceImpl implements MonetizationService {
                     UserCreditDTO userCreditDTO = userCreditService.creditUserCredits(userCode, packageInfo.getCredits(), transaction);
                     paymentVerificationResponse.setUserCredits(userCreditDTO.getAvailable());
                     notificationService.sendPaymentSuccessNotification(userCode, packageInfo.getCredits());
-                    emailService.sendPaymentMail("New Payment made", TransformUtil.toJson(paymentVerificationRequest), userCode);
+                    sesEmailService.sendPaymentMail("New Payment made", TransformUtil.toJson(paymentVerificationRequest), userCode);
                 }
                 else handleTransaction(transaction, paymentVerificationResponse);
 
@@ -248,7 +250,7 @@ public class MonetizationServiceImpl implements MonetizationService {
                     UserCreditDTO userCreditDTO = userCreditService.creditUserCredits(userCode, credits, transaction);
                     paymentVerificationResponse.setUserCredits(userCreditDTO.getAvailable());
                     notificationService.sendPaymentSuccessNotification(userCode, credits);
-                    emailService.sendPaymentMail("New Apple Receipt Payment made", TransformUtil.toJson(paymentVerificationRequest), userCode);
+                    sesEmailService.sendPaymentMail("New Apple Receipt Payment made", TransformUtil.toJson(paymentVerificationRequest), userCode);
                 }
                 else handleTransaction(transaction, paymentVerificationResponse);
 
@@ -325,7 +327,7 @@ public class MonetizationServiceImpl implements MonetizationService {
                     UserCreditDTO userCreditDTO = userCreditService.creditUserCredits(userCode, packageInfo.getCredits(), transaction);
                     paymentVerificationResponse.setUserCredits(userCreditDTO.getAvailable());
                     notificationService.sendPaymentSuccessNotification(userCode, packageInfo.getCredits());
-                    emailService.sendPaymentMail("New Apple Transaction Payment made", TransformUtil.toJson(paymentVerificationRequest));
+                    sesEmailService.sendPaymentMail("New Apple Transaction Payment made", TransformUtil.toJson(paymentVerificationRequest));
                 }
                 else handleTransaction(transaction, paymentVerificationResponse);
 
