@@ -51,6 +51,7 @@ import com.av.pixel.service.GenerationsService;
 import com.av.pixel.service.ImageCompressionService;
 import com.av.pixel.service.GenerationActionService;
 import com.av.pixel.service.S3Service;
+import com.av.pixel.service.SesEmailService;
 import com.av.pixel.service.UserCreditService;
 import com.av.pixel.service.UserService;
 import lombok.AllArgsConstructor;
@@ -98,6 +99,7 @@ public class GenerationsServiceImpl implements GenerationsService {
     private final ImageCompressionService imageCompressionService;
     private final ImageFlagRepository imageFlagRepository;
     private final EmailService emailService;
+    private final SesEmailService sesEmailService;
     private final AsyncUtil asyncUtil;
     private final BlockUserService blockUserService;
     private final UserCreditHelper userCreditHelper;
@@ -283,7 +285,7 @@ public class GenerationsServiceImpl implements GenerationsService {
             String body = "[CRITICAL] ideogram exception " + " \n\n requestBody: " + TransformUtil.toJson(imageRequest)
                     + "\n \n error : Found " + unsafeImages + " unsafe images "
                     + "\n \n user Code : " + userCode;
-            emailService.sendErrorMail(body);
+            sesEmailService.sendErrorMail(body);
         }
         if (unsafeImages == size) {
             throw new IdeogramUnprocessableEntityException();
