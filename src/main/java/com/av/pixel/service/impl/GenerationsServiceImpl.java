@@ -4,11 +4,14 @@ import com.av.pixel.cache.RLock;
 import com.av.pixel.cache.Cache;
 import com.av.pixel.client.GoEnhanceClient;
 import com.av.pixel.client.IdeogramClient;
+import com.av.pixel.dao.VideoEffectConfig;
 import com.av.pixel.dao.VideoEffectJob;
-import com.av.pixel.enums.GoEnhanceEffectEnum;
+import com.av.pixel.dto.VideoEffectConfigDTO;
 import com.av.pixel.enums.GoEnhanceResolutionEnum;
 import com.av.pixel.enums.VideoEffectJobStatusEnum;
+import com.av.pixel.repository.VideoEffectConfigRepository;
 import com.av.pixel.repository.VideoEffectJobRepository;
+import com.av.pixel.response.goenhance.GoEnhanceEffectListResponse;
 import com.av.pixel.request.VideoEffectRequest;
 import com.av.pixel.response.goenhance.GoEnhanceGenerateResponse;
 import com.av.pixel.response.goenhance.GoEnhanceJobResponse;
@@ -101,6 +104,7 @@ public class GenerationsServiceImpl implements GenerationsService {
     private final IdeogramClient ideogramClient;
     private final GoEnhanceClient goEnhanceClient;
     private final VideoEffectJobRepository videoEffectJobRepository;
+    private final VideoEffectConfigRepository videoEffectConfigRepository;
     private final GenerationHelper generationHelper;
     private final GenerationActionService generationActionService;
     private final RLock locker;
@@ -617,17 +621,11 @@ public class GenerationsServiceImpl implements GenerationsService {
     public GenerationsDTO generateVideoEffect(UserDTO userDTO, VideoEffectRequest request, MultipartFile file) {
         log.info("generateVideoEffect effect={} from {}", request.getEffect(), userDTO.getCode());
 
-        if (request.getEffect() == null) {
+        if (request.getEffect() == null || request.getEffect().isBlank()) {
             throw new Error(HttpStatus.BAD_REQUEST, "Effect is required");
         }
 
-        GoEnhanceEffectEnum effect;
-        try {
-            effect = GoEnhanceEffectEnum.valueOf(request.getEffect().toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new Error(HttpStatus.BAD_REQUEST, "Invalid effect: " + request.getEffect());
-        }
-
+        String effectId = request.getEffect();
         String key = "generation_" + userDTO.getCode();
         boolean locked = locker.tryLock(key, 10);
 
@@ -651,7 +649,7 @@ public class GenerationsServiceImpl implements GenerationsService {
             }
 
             String resolution = GoEnhanceResolutionEnum.fromValue(request.getResolution()).getValue();
-            GoEnhanceGenerateResponse generateResponse = goEnhanceClient.generateVideoEffect(effect.getEffectName(), referenceImageUrl, resolution);
+            GoEnhanceGenerateResponse generateResponse = goEnhanceClient.generateVideoEffect(effectId, referenceImageUrl, resolution);
             if (generateResponse == null || generateResponse.getImgUuid() == null) {
                 throw new Error("Failed to submit video effect job, please try again");
             }
@@ -659,7 +657,7 @@ public class GenerationsServiceImpl implements GenerationsService {
             VideoEffectJob job = videoEffectJobRepository.save(new VideoEffectJob()
                     .setImgUuid(generateResponse.getImgUuid())
                     .setUserCode(userDTO.getCode())
-                    .setEffect(effect.getEffectName())
+                    .setEffect(effectId)
                     .setReferenceImageUrl(referenceImageUrl)
                     .setPrivateImage(request.getPrivateImage())
                     .setStatus(VideoEffectJobStatusEnum.PENDING));
@@ -772,6 +770,41 @@ public class GenerationsServiceImpl implements GenerationsService {
         }
         log.warn("[GoEnhance] poll timed out uuid={}, job will be picked up by scheduler", imgUuid);
         return null;
+    }
+
+    @Override
+    public List<VideoEffectConfigDTO> getVideoEffects() {
+        return videoEffectConfigRepository.findAllByDeletedFalse().stream()
+                .map(e -> new VideoEffectConfigDTO()
+                        .setEffectId(e.getEffectId())
+                        .setLabel(e.getLabel())
+                        .setUrl(e.getUrl()))
+                .toList();
+    }
+
+    @Override
+    public void refreshVideoEffects() {
+        try {
+            GoEnhanceEffectListResponse listResponse = goEnhanceClient.getEffectList();
+            if (listResponse == null || listResponse.getCode() != 0 || CollectionUtils.isEmpty(listResponse.getData())) {
+                log.error("refreshVideoEffects: empty or failed response from GoEnhance");
+                return;
+            }
+
+            videoEffectConfigRepository.deleteAll();
+
+            List<VideoEffectConfig> configs = listResponse.getData().stream()
+                    .map(item -> new VideoEffectConfig()
+                            .setEffectId(item.getEffectId())
+                            .setLabel(item.getLabel())
+                            .setUrl(item.getUrl()))
+                    .toList();
+
+            videoEffectConfigRepository.saveAll(configs);
+            log.info("refreshVideoEffects: saved {} effects", configs.size());
+        } catch (Exception e) {
+            log.error("refreshVideoEffects failed", e);
+        }
     }
 
     @Override

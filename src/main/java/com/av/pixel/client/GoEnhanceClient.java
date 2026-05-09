@@ -1,6 +1,7 @@
 package com.av.pixel.client;
 
 import com.av.pixel.request.goenhance.GoEnhanceGenerateRequest;
+import com.av.pixel.response.goenhance.GoEnhanceEffectListResponse;
 import com.av.pixel.response.goenhance.GoEnhanceGenerateResponse;
 import com.av.pixel.response.goenhance.GoEnhanceJobResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +22,7 @@ public class GoEnhanceClient {
     private static final String BASE_URL = "https://api.goenhance.ai";
     private static final String GENERATE_URL = "/api/v1/videoeffect/generate";
     private static final String JOB_STATUS_URL = "/api/v1/jobs/detail?img_uuid=";
+    private static final String EFFECT_LIST_URL = "/api/v1/videoeffect/list";
 
     private static final String MOCK_VIDEO_URL = "https://cdn4.goenhance.ai/source/lLC4oSUcjt7Gxn6myXO7yU57zSMCpBW-LQBywhteGASJV-bFBwHarPigu9P9YZ7-WykeSut7ln4XnPyu9MdEfwjLYuwbJu4ulc-Is6wruwhuRmAKCCovxuGz7IRFK79ioXx3lDyF4rzcwSNOSG3PWO9r0XPUm-NH7GUuBwWh8i4dIZu2T8ybtiQj.mp4";
 
@@ -117,6 +119,22 @@ public class GoEnhanceClient {
         response.setMsg("Success");
         response.setData(data);
         return response;
+    }
+
+    public GoEnhanceEffectListResponse getEffectList() {
+        String url = BASE_URL + EFFECT_LIST_URL;
+        HttpEntity<Void> entity = new HttpEntity<>(buildHeaders());
+        try {
+            ResponseEntity<GoEnhanceEffectListResponse> response =
+                    restTemplate.exchange(url, HttpMethod.GET, entity, GoEnhanceEffectListResponse.class);
+            return response.getBody();
+        } catch (HttpClientErrorException | HttpServerErrorException e) {
+            log.error("[GoEnhance] getEffectList failed status={} body={}", e.getStatusCode(), e.getResponseBodyAsString());
+            throw e;
+        } catch (Exception e) {
+            log.error("[GoEnhance] getEffectList failed msg={}", e.getMessage());
+            throw e;
+        }
     }
 
     private HttpHeaders buildHeaders() {

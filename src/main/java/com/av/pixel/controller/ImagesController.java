@@ -3,6 +3,7 @@ package com.av.pixel.controller;
 import com.av.pixel.auth.Authenticated;
 import com.av.pixel.dto.GenerationsDTO;
 import com.av.pixel.dto.UserDTO;
+import com.av.pixel.dto.VideoEffectConfigDTO;
 import com.av.pixel.enums.PermissionEnum;
 import com.av.pixel.exception.Error;
 import com.av.pixel.helper.TransformUtil;
@@ -16,6 +17,8 @@ import com.av.pixel.response.GenerationsFilterResponse;
 import com.av.pixel.response.ImagePricingResponse;
 import com.av.pixel.response.base.Response;
 import com.av.pixel.service.GenerationsService;
+
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -68,6 +71,12 @@ public class ImagesController {
             throw new Error(HttpStatus.BAD_REQUEST, "Invalid request");
         }
         return response(imagesService.generate(userDTO, generateRequestObject, file), HttpStatus.CREATED);
+    }
+
+    @GetMapping("/effects")
+    @Authenticated
+    public ResponseEntity<Response<List<VideoEffectConfigDTO>>> getVideoEffects(UserDTO userDTO) {
+        return response(imagesService.getVideoEffects(), HttpStatus.OK);
     }
 
     @PostMapping(value = "/generate/goenhance")

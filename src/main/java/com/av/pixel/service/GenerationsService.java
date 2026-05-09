@@ -3,6 +3,7 @@ package com.av.pixel.service;
 import com.av.pixel.dao.Generations;
 import com.av.pixel.dto.GenerationsDTO;
 import com.av.pixel.dto.UserDTO;
+import com.av.pixel.dto.VideoEffectConfigDTO;
 import com.av.pixel.request.GenerateRequest;
 import com.av.pixel.request.GenerationsFilterRequest;
 import com.av.pixel.request.ImageActionRequest;
@@ -13,6 +14,8 @@ import com.av.pixel.response.GenerationsFilterResponse;
 import com.av.pixel.response.ImagePricingResponse;
 import com.av.pixel.response.ModelConfigResponse;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 public interface GenerationsService {
 
@@ -33,5 +36,9 @@ public interface GenerationsService {
     String reportImage (UserDTO userDTO, ImageReportRequest imageReportRequest);
 
     void processPendingVideoEffectJobs();
+
+    List<VideoEffectConfigDTO> getVideoEffects();
+
+    void refreshVideoEffects();
 
 }
