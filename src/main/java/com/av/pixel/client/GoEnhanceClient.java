@@ -1,5 +1,6 @@
 package com.av.pixel.client;
 
+import com.av.pixel.helper.TransformUtil;
 import com.av.pixel.request.goenhance.GoEnhanceGenerateRequest;
 import com.av.pixel.response.goenhance.GoEnhanceEffectListResponse;
 import com.av.pixel.response.goenhance.GoEnhanceGenerateResponse;
@@ -125,9 +126,9 @@ public class GoEnhanceClient {
         String url = BASE_URL + EFFECT_LIST_URL;
         HttpEntity<Void> entity = new HttpEntity<>(buildHeaders());
         try {
-            ResponseEntity<GoEnhanceEffectListResponse> response =
-                    restTemplate.exchange(url, HttpMethod.GET, entity, GoEnhanceEffectListResponse.class);
-            return response.getBody();
+            ResponseEntity<String> response =
+                    restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+            return TransformUtil.fromJson(response.getBody(), GoEnhanceEffectListResponse.class);
         } catch (HttpClientErrorException | HttpServerErrorException e) {
             log.error("[GoEnhance] getEffectList failed status={} body={}", e.getStatusCode(), e.getResponseBodyAsString());
             throw e;
