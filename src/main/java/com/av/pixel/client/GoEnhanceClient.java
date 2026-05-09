@@ -12,6 +12,7 @@ import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
+import java.util.UUID;
 
 @Component
 @Slf4j
@@ -21,8 +22,13 @@ public class GoEnhanceClient {
     private static final String GENERATE_URL = "/api/v1/videoeffect/generate";
     private static final String JOB_STATUS_URL = "/api/v1/jobs/detail?img_uuid=";
 
+    private static final String MOCK_VIDEO_URL = "https://cdn4.goenhance.ai/source/lLC4oSUcjt7Gxn6myXO7yU57zSMCpBW-LQBywhteGASJV-bFBwHarPigu9P9YZ7-WykeSut7ln4XnPyu9MdEfwjLYuwbJu4ulc-Is6wruwhuRmAKCCovxuGz7IRFK79ioXx3lDyF4rzcwSNOSG3PWO9r0XPUm-NH7GUuBwWh8i4dIZu2T8ybtiQj.mp4";
+
     @Value("${goenhance.api.key}")
     private String apiKey;
+
+    @Value("${goenhance.mock.enabled:false}")
+    private boolean mockEnabled;
 
     private final RestTemplate restTemplate;
 
@@ -31,6 +37,11 @@ public class GoEnhanceClient {
     }
 
     public GoEnhanceGenerateResponse generateVideoEffect(String effectId, String imageUrl, String resolution) {
+        if (mockEnabled) {
+            log.info("[GoEnhance][MOCK] generateVideoEffect effectId={}", effectId);
+            return mockGenerateResponse();
+        }
+
         String url = BASE_URL + GENERATE_URL;
         GoEnhanceGenerateRequest request = new GoEnhanceGenerateRequest()
                 .setArgs(new GoEnhanceGenerateRequest.Args()
@@ -58,6 +69,11 @@ public class GoEnhanceClient {
     }
 
     public GoEnhanceJobResponse getJobStatus(String imgUuid) {
+        if (mockEnabled) {
+            log.info("[GoEnhance][MOCK] getJobStatus uuid={}", imgUuid);
+            return mockJobResponse(imgUuid);
+        }
+
         String url = BASE_URL + JOB_STATUS_URL + imgUuid;
         HttpEntity<Void> entity = new HttpEntity<>(buildHeaders());
         try {
@@ -71,6 +87,36 @@ public class GoEnhanceClient {
             log.error("[GoEnhance] job status failed uuid={} msg={}", imgUuid, e.getMessage());
             throw e;
         }
+    }
+
+    private GoEnhanceGenerateResponse mockGenerateResponse() {
+        GoEnhanceGenerateResponse.Data data = new GoEnhanceGenerateResponse.Data();
+        data.setImgUuid(UUID.randomUUID().toString());
+        data.setCost(0);
+
+        GoEnhanceGenerateResponse response = new GoEnhanceGenerateResponse();
+        response.setCode(0);
+        response.setMsg("Success");
+        response.setData(data);
+        return response;
+    }
+
+    private GoEnhanceJobResponse mockJobResponse(String imgUuid) {
+        GoEnhanceJobResponse.JsonValue jsonValue = new GoEnhanceJobResponse.JsonValue();
+        jsonValue.setType("video");
+        jsonValue.setValue(MOCK_VIDEO_URL);
+        jsonValue.setDuration(10.0);
+
+        GoEnhanceJobResponse.Data data = new GoEnhanceJobResponse.Data();
+        data.setImgUuid(imgUuid);
+        data.setStatus("success");
+        data.setJson(List.of(jsonValue));
+
+        GoEnhanceJobResponse response = new GoEnhanceJobResponse();
+        response.setCode(0);
+        response.setMsg("Success");
+        response.setData(data);
+        return response;
     }
 
     private HttpHeaders buildHeaders() {
