@@ -31,4 +31,5 @@ public class GenerationsDTO {
     String colorPalette;
     String aspectRatio;
     String characterRefImageUrl;
+    String message;
 }

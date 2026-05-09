@@ -8,6 +8,7 @@ import com.av.pixel.request.GenerationsFilterRequest;
 import com.av.pixel.request.ImageActionRequest;
 import com.av.pixel.request.ImagePricingRequest;
 import com.av.pixel.request.ImageReportRequest;
+import com.av.pixel.request.VideoEffectRequest;
 import com.av.pixel.response.GenerationsFilterResponse;
 import com.av.pixel.response.ImagePricingResponse;
 import com.av.pixel.response.ModelConfigResponse;
@@ -19,6 +20,8 @@ public interface GenerationsService {
 
     GenerationsDTO generate(UserDTO userDTO, GenerateRequest generateRequest, MultipartFile file);
 
+    GenerationsDTO generateVideoEffect(UserDTO userDTO, VideoEffectRequest request, MultipartFile file);
+
     ImagePricingResponse getPricing (ImagePricingRequest imagePricingRequest);
 
     ModelConfigResponse getModelConfigs ();
@@ -28,5 +31,7 @@ public interface GenerationsService {
     String addView (UserDTO userDTO, ImageActionRequest imageActionRequest);
 
     String reportImage (UserDTO userDTO, ImageReportRequest imageReportRequest);
+
+    void processPendingVideoEffectJobs();
 
 }

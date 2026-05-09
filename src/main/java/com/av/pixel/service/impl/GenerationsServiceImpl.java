@@ -2,7 +2,15 @@ package com.av.pixel.service.impl;
 
 import com.av.pixel.cache.RLock;
 import com.av.pixel.cache.Cache;
+import com.av.pixel.client.GoEnhanceClient;
 import com.av.pixel.client.IdeogramClient;
+import com.av.pixel.dao.VideoEffectJob;
+import com.av.pixel.enums.GoEnhanceEffectEnum;
+import com.av.pixel.enums.VideoEffectJobStatusEnum;
+import com.av.pixel.repository.VideoEffectJobRepository;
+import com.av.pixel.request.VideoEffectRequest;
+import com.av.pixel.response.goenhance.GoEnhanceGenerateResponse;
+import com.av.pixel.response.goenhance.GoEnhanceJobResponse;
 import com.av.pixel.dao.Generations;
 import com.av.pixel.dao.ImageFlag;
 import com.av.pixel.dao.ModelConfig;
@@ -90,6 +98,8 @@ public class GenerationsServiceImpl implements GenerationsService {
     private final UserCreditService userCreditService;
     private final ModelConfigRepository modelConfigRepository;
     private final IdeogramClient ideogramClient;
+    private final GoEnhanceClient goEnhanceClient;
+    private final VideoEffectJobRepository videoEffectJobRepository;
     private final GenerationHelper generationHelper;
     private final GenerationActionService generationActionService;
     private final RLock locker;
@@ -592,6 +602,168 @@ public class GenerationsServiceImpl implements GenerationsService {
             return generationActionService.addView(imageActionRequest.getGenerationId());
         }
         return "success";
+    }
+
+    private static final int VIDEO_EFFECT_COST = 200;
+
+    @Override
+    public GenerationsDTO generateVideoEffect(UserDTO userDTO, VideoEffectRequest request, MultipartFile file) {
+        log.info("generateVideoEffect effect={} from {}", request.getEffect(), userDTO.getCode());
+
+        if (request.getEffect() == null) {
+            throw new Error(HttpStatus.BAD_REQUEST, "Effect is required");
+        }
+
+        GoEnhanceEffectEnum effect;
+        try {
+            effect = GoEnhanceEffectEnum.valueOf(request.getEffect().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new Error(HttpStatus.BAD_REQUEST, "Invalid effect: " + request.getEffect());
+        }
+
+        String key = "generation_" + userDTO.getCode();
+        boolean locked = locker.tryLock(key, 10);
+
+        if (!locked) {
+            throw new Error("1 Generation already in progress, Please wait..");
+        }
+
+        try {
+            UserCreditDTO userCreditDTO = userCreditService.getUserCredit(userDTO.getCode());
+            if (Objects.isNull(userCreditDTO)) {
+                userCreditDTO = UserCreditMap.userCreditDTO(userCreditService.createNewUserCredit(userDTO.getCode()));
+            }
+
+            if (userCreditDTO.getAvailable() < VIDEO_EFFECT_COST) {
+                throw new Error(HttpStatus.PAYMENT_REQUIRED, "Not enough credits");
+            }
+
+            String referenceImageUrl = safeUploadRefImage(userDTO.getCode(), file);
+            if (referenceImageUrl == null) {
+                throw new Error(HttpStatus.BAD_REQUEST, "Reference image is required");
+            }
+
+            GoEnhanceGenerateResponse generateResponse = goEnhanceClient.generateVideoEffect(effect, referenceImageUrl);
+            if (generateResponse == null || generateResponse.getImgUuid() == null) {
+                throw new Error("Failed to submit video effect job, please try again");
+            }
+
+            VideoEffectJob job = videoEffectJobRepository.save(new VideoEffectJob()
+                    .setImgUuid(generateResponse.getImgUuid())
+                    .setUserCode(userDTO.getCode())
+                    .setEffect(effect.getEffectName())
+                    .setReferenceImageUrl(referenceImageUrl)
+                    .setPrivateImage(request.getPrivateImage())
+                    .setStatus(VideoEffectJobStatusEnum.PENDING));
+
+            String videoUrl = pollForVideoUrl(generateResponse.getImgUuid());
+
+            locker.unlock(key);
+
+            if (videoUrl != null) {
+                Generations generations = completeVideoEffectJob(job, videoUrl);
+                GenerationsDTO res = GenerationsMap.toGenerationsDTO(generations);
+                assert res != null;
+                return res.setUserName(userDTO.getFirstName()).setUserImgUrl(userDTO.getImageUrl());
+            }
+
+            return new GenerationsDTO().setMessage("We will inform you when your video is ready");
+        } catch (Error e) {
+            locker.unlock(key);
+            throw e;
+        } catch (Exception e) {
+            locker.unlock(key);
+            log.error("generateVideoEffect error", e);
+            throw new Error("Some error occurred, please try again");
+        }
+    }
+
+    private String uploadVideoToS3(String videoUrl, String userCode) {
+        try {
+            java.net.http.HttpResponse<byte[]> response = s3Service.downloadImage(videoUrl);
+            String fileName = getFileName(userCode, DateUtil.currentTimeMillis());
+            String extension = s3Service.getImageExtensionName(response);
+            return s3Service.uploadToS3(response.body(), fileName + extension);
+        } catch (Exception e) {
+            log.error("uploadVideoToS3 error for userCode={}", userCode, e);
+            return videoUrl;
+        }
+    }
+
+    private Generations completeVideoEffectJob(VideoEffectJob job, String videoUrl) {
+        String s3VideoUrl = uploadVideoToS3(videoUrl, job.getUserCode());
+        Generations generations = generationHelper.saveVideoEffectGeneration(
+                job.getUserCode(), job.getEffect(), s3VideoUrl, job.getReferenceImageUrl(),
+                Boolean.TRUE.equals(job.getPrivateImage()));
+
+        asyncUtil.executeAsync(() -> {
+            userCreditService.debitUserCredit(job.getUserCode(), VIDEO_EFFECT_COST,
+                    OrderTypeEnum.VIDEO_EFFECT, "SERVER", generations.getId().toString());
+            return null;
+        });
+
+        job.setStatus(VideoEffectJobStatusEnum.COMPLETED);
+        videoEffectJobRepository.save(job);
+
+        return generations;
+    }
+
+    @Override
+    public void processPendingVideoEffectJobs() {
+        List<VideoEffectJob> pendingJobs = videoEffectJobRepository.findAllByStatusAndDeletedFalse(VideoEffectJobStatusEnum.PENDING);
+        if (CollectionUtils.isEmpty(pendingJobs)) {
+            return;
+        }
+        log.info("processPendingVideoEffectJobs found {} pending jobs", pendingJobs.size());
+
+        for (VideoEffectJob job : pendingJobs) {
+            try {
+                GoEnhanceJobResponse jobResponse = goEnhanceClient.getJobStatus(job.getImgUuid());
+                if (jobResponse == null) continue;
+
+                if (jobResponse.isSuccess()) {
+                    String videoUrl = jobResponse.getVideoUrl();
+                    if (videoUrl != null) {
+                        completeVideoEffectJob(job, videoUrl);
+                        log.info("processPendingVideoEffectJobs completed job uuid={}", job.getImgUuid());
+                    }
+                } else if (!jobResponse.isPending() && !jobResponse.isProcessing()) {
+                    job.setStatus(VideoEffectJobStatusEnum.FAILED);
+                    videoEffectJobRepository.save(job);
+                    log.error("processPendingVideoEffectJobs job failed uuid={} status={}", job.getImgUuid(),
+                            job.getStatus());
+                }
+            } catch (Exception e) {
+                log.error("processPendingVideoEffectJobs error for uuid={}", job.getImgUuid(), e);
+            }
+        }
+    }
+
+    private String pollForVideoUrl(String imgUuid) {
+        int maxRetries = 20;
+        int sleepMs = 3000;
+        for (int i = 0; i < maxRetries; i++) {
+            try {
+                Thread.sleep(sleepMs);
+                GoEnhanceJobResponse jobResponse = goEnhanceClient.getJobStatus(imgUuid);
+                if (jobResponse == null) continue;
+                if (jobResponse.isSuccess()) {
+                    return jobResponse.getVideoUrl();
+                }
+                if (!jobResponse.isPending() && !jobResponse.isProcessing()) {
+                    log.error("[GoEnhance] job failed uuid={} status={}", imgUuid,
+                            jobResponse.getData() != null ? jobResponse.getData().getStatus() : "null");
+                    return null;
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return null;
+            } catch (Exception e) {
+                log.error("[GoEnhance] poll error uuid={}", imgUuid, e);
+            }
+        }
+        log.warn("[GoEnhance] poll timed out uuid={}, job will be picked up by scheduler", imgUuid);
+        return null;
     }
 
     @Override

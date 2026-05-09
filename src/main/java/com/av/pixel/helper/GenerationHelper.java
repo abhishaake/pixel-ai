@@ -2,6 +2,7 @@ package com.av.pixel.helper;
 
 import com.av.pixel.dao.GenerationHistory;
 import com.av.pixel.dao.Generations;
+import com.av.pixel.dao.PromptImage;
 import com.av.pixel.dto.GenerationsDTO;
 import com.av.pixel.enums.ImageStyleEnum;
 import com.av.pixel.mapper.GenerationsMap;
@@ -101,6 +102,34 @@ public class GenerationHelper {
 
         generationHistoryRepository.save(generationHistory);
 
+        return generations;
+    }
+
+    public Generations saveVideoEffectGeneration(String userCode, String effect, String videoUrl, String referenceImageUrl, boolean privateImage) {
+        PromptImage promptImage = new PromptImage()
+                .setImageId(1)
+                .setUrl(videoUrl)
+                .setThumbnail(videoUrl)
+                .setSafeImage(true);
+
+        Generations generations = new Generations()
+                .setImages(List.of(promptImage))
+                .setUserCode(userCode)
+                .setModel(effect)
+                .setLikes(0L)
+                .setViews(0L)
+                .setPrivateImage(privateImage)
+                .setCharacterRefImageUrl(referenceImageUrl)
+                .setEpoch(DateUtil.currentTimeSec());
+
+        generations = generationsRepository.save(generations);
+
+        GenerationHistory generationHistory = new GenerationHistory()
+                .setGenerationId(generations.getId().toString())
+                .setUserCode(userCode)
+                .setCost(0.0);
+
+        generationHistoryRepository.save(generationHistory);
         return generations;
     }
 

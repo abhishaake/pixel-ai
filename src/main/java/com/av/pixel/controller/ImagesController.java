@@ -11,6 +11,7 @@ import com.av.pixel.request.GenerationsFilterRequest;
 import com.av.pixel.request.ImageActionRequest;
 import com.av.pixel.request.ImagePricingRequest;
 import com.av.pixel.request.ImageReportRequest;
+import com.av.pixel.request.VideoEffectRequest;
 import com.av.pixel.response.GenerationsFilterResponse;
 import com.av.pixel.response.ImagePricingResponse;
 import com.av.pixel.response.base.Response;
@@ -64,6 +65,20 @@ public class ImagesController {
             throw new Error(HttpStatus.BAD_REQUEST, "Invalid request");
         }
         return response(imagesService.generate(userDTO, generateRequestObject, file), HttpStatus.CREATED);
+    }
+
+    @PostMapping(value = "/generate/goenhance")
+    @Authenticated
+    public ResponseEntity<Response<GenerationsDTO>> generateVideoEffect(
+            UserDTO userDTO,
+            @RequestParam(value = "body") String request,
+            @RequestParam(value = "reference_image") MultipartFile file
+    ) {
+        VideoEffectRequest videoEffectRequest = TransformUtil.fromJson(request, VideoEffectRequest.class);
+        if (videoEffectRequest == null) {
+            throw new Error(HttpStatus.BAD_REQUEST, "Invalid request");
+        }
+        return response(imagesService.generateVideoEffect(userDTO, videoEffectRequest, file), HttpStatus.CREATED);
     }
 
     @Authenticated
