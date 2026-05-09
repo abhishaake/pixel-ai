@@ -1,7 +1,5 @@
 package com.av.pixel.client;
 
-import com.av.pixel.enums.GoEnhanceEffectEnum;
-import com.av.pixel.helper.TransformUtil;
 import com.av.pixel.request.goenhance.GoEnhanceGenerateRequest;
 import com.av.pixel.response.goenhance.GoEnhanceGenerateResponse;
 import com.av.pixel.response.goenhance.GoEnhanceJobResponse;
@@ -20,7 +18,7 @@ import java.util.List;
 public class GoEnhanceClient {
 
     private static final String BASE_URL = "https://api.goenhance.ai";
-    private static final String GENERATE_URL = "/api/v2/videoeffect/generate/";
+    private static final String GENERATE_URL = "/api/v1/videoeffect/generate";
     private static final String JOB_STATUS_URL = "/api/v1/jobs/detail?img_uuid=";
 
     @Value("${goenhance.api.key}")
@@ -32,21 +30,29 @@ public class GoEnhanceClient {
         this.restTemplate = restTemplate;
     }
 
-    public GoEnhanceGenerateResponse generateVideoEffect(GoEnhanceEffectEnum effect, String imageUrl) {
-        String url = BASE_URL + GENERATE_URL + effect.getEffectName();
+    public GoEnhanceGenerateResponse generateVideoEffect(String effectId, String imageUrl, String resolution) {
+        String url = BASE_URL + GENERATE_URL;
         GoEnhanceGenerateRequest request = new GoEnhanceGenerateRequest()
-                .setArgs(new GoEnhanceGenerateRequest.Args().setReferenceImg(imageUrl));
+                .setArgs(new GoEnhanceGenerateRequest.Args()
+                        .setEffectId(effectId)
+                        .setResolution(resolution)
+                        .setReferenceImg(imageUrl));
 
         HttpEntity<GoEnhanceGenerateRequest> entity = new HttpEntity<>(request, buildHeaders());
         try {
             ResponseEntity<GoEnhanceGenerateResponse> response =
                     restTemplate.exchange(url, HttpMethod.POST, entity, GoEnhanceGenerateResponse.class);
-            return response.getBody();
+            GoEnhanceGenerateResponse body = response.getBody();
+            if (body == null || !body.isSuccessful()) {
+                log.error("[GoEnhance] generate failed effectId={} msg={}", effectId, body != null ? body.getMsg() : "null response");
+                return null;
+            }
+            return body;
         } catch (HttpClientErrorException | HttpServerErrorException e) {
-            log.error("[GoEnhance] generate failed url={} status={} body={}", url, e.getStatusCode(), e.getResponseBodyAsString());
+            log.error("[GoEnhance] generate failed effectId={} status={} body={}", effectId, e.getStatusCode(), e.getResponseBodyAsString());
             throw e;
         } catch (Exception e) {
-            log.error("[GoEnhance] generate failed url={} msg={}", url, e.getMessage());
+            log.error("[GoEnhance] generate failed effectId={} msg={}", effectId, e.getMessage());
             throw e;
         }
     }

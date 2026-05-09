@@ -8,18 +8,37 @@ import java.util.List;
 @Data
 public class GoEnhanceJobResponse {
 
+    int code;
+    String msg;
     Data data;
+    @JsonProperty("request_id")
+    String requestId;
 
     @lombok.Data
     public static class Data {
+        @JsonProperty("img_uuid")
+        String imgUuid;
         String status;
+        String type;
+        @JsonProperty("start_time")
+        String startTime;
+        @JsonProperty("end_time")
+        String endTime;
+        @JsonProperty("model_id")
+        String modelId;
+        @JsonProperty("job_type")
+        String jobType;
         @JsonProperty("json")
         List<JsonValue> json;
     }
 
     @lombok.Data
     public static class JsonValue {
+        String type;
         String value;
+        Double duration;
+        @JsonProperty("link_expired_at")
+        String linkExpiredAt;
     }
 
     public boolean isSuccess() {

@@ -9,5 +9,6 @@ import lombok.experimental.Accessors;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class VideoEffectRequest {
     String effect;
+    String resolution;
     Boolean privateImage;
 }

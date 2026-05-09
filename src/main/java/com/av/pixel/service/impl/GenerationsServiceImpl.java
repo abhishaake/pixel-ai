@@ -6,6 +6,7 @@ import com.av.pixel.client.GoEnhanceClient;
 import com.av.pixel.client.IdeogramClient;
 import com.av.pixel.dao.VideoEffectJob;
 import com.av.pixel.enums.GoEnhanceEffectEnum;
+import com.av.pixel.enums.GoEnhanceResolutionEnum;
 import com.av.pixel.enums.VideoEffectJobStatusEnum;
 import com.av.pixel.repository.VideoEffectJobRepository;
 import com.av.pixel.request.VideoEffectRequest;
@@ -649,7 +650,8 @@ public class GenerationsServiceImpl implements GenerationsService {
                 throw new Error(HttpStatus.BAD_REQUEST, "Reference image is required");
             }
 
-            GoEnhanceGenerateResponse generateResponse = goEnhanceClient.generateVideoEffect(effect, referenceImageUrl);
+            String resolution = GoEnhanceResolutionEnum.fromValue(request.getResolution()).getValue();
+            GoEnhanceGenerateResponse generateResponse = goEnhanceClient.generateVideoEffect(effect.getEffectName(), referenceImageUrl, resolution);
             if (generateResponse == null || generateResponse.getImgUuid() == null) {
                 throw new Error("Failed to submit video effect job, please try again");
             }
