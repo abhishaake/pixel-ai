@@ -385,7 +385,7 @@ public class GenerationsServiceImpl implements GenerationsService {
     }
 
     @Override
-    public GenerationsFilterResponse filterImages (UserDTO userDTO, GenerationsFilterRequest generationsFilterRequest) {
+    public GenerationsFilterResponse filterImages (UserDTO userDTO, GenerationsFilterRequest generationsFilterRequest, boolean includeVideoEffects) {
         String userCode = (Objects.nonNull(userDTO) && StringUtils.isNotEmpty(userDTO.getCode())) ? userDTO.getCode() : null;
 
         Validator.validateFilterImageRequest(generationsFilterRequest, "");
@@ -414,6 +414,7 @@ public class GenerationsServiceImpl implements GenerationsService {
                     privacyEnum.getPrivateImage(),
                     generationsFilterRequest.getSort(),
                     blockedUsers,
+                    includeVideoEffects,
                     PageRequest.of(generationsFilterRequest.getPage(), generationsFilterRequest.getSize()));
 
             long totalCount = generationsPage.getTotalElements();
@@ -471,6 +472,7 @@ public class GenerationsServiceImpl implements GenerationsService {
                                             Boolean privacy,
                                             SortByRequest sortByRequest,
                                             List<String> blockedUsers,
+                                            boolean includeVideoEffects,
                                             Pageable pageable) {
 
         List<Criteria> criteriaList = new ArrayList<>();
@@ -493,6 +495,10 @@ public class GenerationsServiceImpl implements GenerationsService {
 
         if (!CollectionUtils.isEmpty(blockedUsers)) {
             criteriaList.add(Criteria.where("userCode").not().in(blockedUsers));
+        }
+
+        if (!includeVideoEffects) {
+            criteriaList.add(Criteria.where("videoEffect").ne(true));
         }
 
         Query query = new Query();

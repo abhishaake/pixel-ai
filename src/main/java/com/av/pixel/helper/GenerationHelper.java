@@ -119,6 +119,7 @@ public class GenerationHelper {
                 .setLikes(0L)
                 .setViews(0L)
                 .setPrivateImage(privateImage)
+                .setVideoEffect(true)
                 .setCharacterRefImageUrl(referenceImageUrl)
                 .setEpoch(DateUtil.currentTimeSec());
 

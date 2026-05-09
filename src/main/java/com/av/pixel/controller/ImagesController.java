@@ -36,8 +36,11 @@ public class ImagesController {
 
     @PostMapping("/filter")
     @Authenticated(permissions = PermissionEnum.ANY)
-    public ResponseEntity<Response<GenerationsFilterResponse>> filterImages(UserDTO userDTO, @RequestBody GenerationsFilterRequest imageFilterRequest) {
-        return response(imagesService.filterImages(userDTO, imageFilterRequest), HttpStatus.OK);
+    public ResponseEntity<Response<GenerationsFilterResponse>> filterImages(
+            UserDTO userDTO,
+            @RequestBody GenerationsFilterRequest imageFilterRequest,
+            @RequestParam(value = "includeVideoEffects", defaultValue = "false") boolean includeVideoEffects) {
+        return response(imagesService.filterImages(userDTO, imageFilterRequest, includeVideoEffects), HttpStatus.OK);
     }
 
     @GetMapping("/pricing")

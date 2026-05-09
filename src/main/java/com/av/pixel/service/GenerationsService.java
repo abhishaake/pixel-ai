@@ -16,7 +16,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 public interface GenerationsService {
 
-    GenerationsFilterResponse filterImages(UserDTO userDTO, GenerationsFilterRequest imageFilterRequest);
+    GenerationsFilterResponse filterImages(UserDTO userDTO, GenerationsFilterRequest imageFilterRequest, boolean includeVideoEffects);
 
     GenerationsDTO generate(UserDTO userDTO, GenerateRequest generateRequest, MultipartFile file);
 

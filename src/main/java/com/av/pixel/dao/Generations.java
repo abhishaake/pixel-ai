@@ -31,4 +31,5 @@ public class Generations extends BaseEntity {
     String characterRefImageUrl;
     Long epoch;
     Long views;
+    Boolean videoEffect;
 }
