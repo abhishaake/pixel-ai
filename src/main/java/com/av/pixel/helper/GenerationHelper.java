@@ -105,11 +105,11 @@ public class GenerationHelper {
         return generations;
     }
 
-    public Generations saveVideoEffectGeneration(String userCode, String effect, String videoUrl, String referenceImageUrl, boolean privateImage) {
+    public Generations saveVideoEffectGeneration(String userCode, String effect, String videoUrl, String thumbnailUrl, String referenceImageUrl, boolean privateImage) {
         PromptImage promptImage = new PromptImage()
                 .setImageId(1)
                 .setUrl(videoUrl)
-                .setThumbnail(videoUrl)
+                .setThumbnail(thumbnailUrl != null ? thumbnailUrl : videoUrl)
                 .setSafeImage(true);
 
         Generations generations = new Generations()

@@ -69,7 +69,8 @@ public class GenerationsMap {
                 .setStyle(styleEnum.getValue())
                 .setColorPalette(generations.getColorPalette())
                 .setCharacterRefImageUrl(generations.getCharacterRefImageUrl())
-                .setAspectRatio(generations.getAspectRatio());
+                .setAspectRatio(generations.getAspectRatio())
+                .setVideoEffect(generations.getVideoEffect());
     }
 
     public static List<PromptImageDTO> toPromptImageDTOList (List<PromptImage> promptImages){

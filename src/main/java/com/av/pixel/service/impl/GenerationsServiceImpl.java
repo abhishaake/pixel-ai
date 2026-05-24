@@ -66,6 +66,7 @@ import com.av.pixel.service.S3Service;
 import com.av.pixel.service.SesEmailService;
 import com.av.pixel.service.UserCreditService;
 import com.av.pixel.service.UserService;
+import com.av.pixel.service.VideoThumbnailService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -118,6 +119,7 @@ public class GenerationsServiceImpl implements GenerationsService {
     private final AsyncUtil asyncUtil;
     private final BlockUserService blockUserService;
     private final UserCreditHelper userCreditHelper;
+    private final VideoThumbnailService videoThumbnailService;
 
     private static final String IMAGE_UNSAFE_LOGO = "https://av-pixel.s3.ap-south-1.amazonaws.com/image_not_safe_logo.jpeg";
 
@@ -684,23 +686,19 @@ public class GenerationsServiceImpl implements GenerationsService {
         }
     }
 
-    private String uploadVideoToS3(String videoUrl, String userCode) {
-        try {
-            java.net.http.HttpResponse<byte[]> response = s3Service.downloadImage(videoUrl);
-            String fileName = getFileName(userCode, DateUtil.currentTimeMillis());
-            String extension = s3Service.getImageExtensionName(response);
-            return s3Service.uploadToS3(response.body(), fileName + extension);
-        } catch (Exception e) {
-            log.error("uploadVideoToS3 error for userCode={}", userCode, e);
-            return videoUrl;
-        }
-    }
+    private Generations completeVideoEffectJob(VideoEffectJob job, String goEnhanceVideoUrl) {
+        // Download the video once — reuse bytes for both the S3 upload and thumbnail extraction
+        java.net.http.HttpResponse<byte[]> videoResponse = s3Service.downloadImage(goEnhanceVideoUrl);
+        byte[] videoBytes = videoResponse.body();
+        String baseFileName = getFileName(job.getUserCode(), DateUtil.currentTimeMillis());
+        String extension = s3Service.getImageExtensionName(videoResponse);
 
-    private Generations completeVideoEffectJob(VideoEffectJob job, String videoUrl) {
-        String s3VideoUrl = uploadVideoToS3(videoUrl, job.getUserCode());
+        String s3VideoUrl = s3Service.uploadToS3(videoBytes, baseFileName + extension);
+        String thumbnailUrl = extractAndUploadVideoThumbnail(videoBytes, baseFileName);
+
         Generations generations = generationHelper.saveVideoEffectGeneration(
-                job.getUserCode(), job.getEffect(), s3VideoUrl, job.getReferenceImageUrl(),
-                Boolean.TRUE.equals(job.getPrivateImage()));
+                job.getUserCode(), job.getEffect(), s3VideoUrl, thumbnailUrl,
+                job.getReferenceImageUrl(), Boolean.TRUE.equals(job.getPrivateImage()));
 
         asyncUtil.executeAsync(() -> {
             userCreditService.debitUserCredit(job.getUserCode(), VIDEO_EFFECT_COST,
@@ -712,6 +710,24 @@ public class GenerationsServiceImpl implements GenerationsService {
         videoEffectJobRepository.save(job);
 
         return generations;
+    }
+
+    /**
+     * Extracts a JPEG thumbnail from the video bytes using FFmpeg and uploads it to S3.
+     * Returns {@code null} if extraction fails — callers fall back to the video URL itself.
+     */
+    private String extractAndUploadVideoThumbnail(byte[] videoBytes, String baseFileName) {
+        try {
+            byte[] thumbnailBytes = videoThumbnailService.extractThumbnail(videoBytes);
+            if (thumbnailBytes == null) {
+                log.warn("[VideoThumbnail] extraction returned null for file={}, thumbnail will be null", baseFileName);
+                return null;
+            }
+            return s3Service.uploadToS3(thumbnailBytes, baseFileName + "_thumbnail.jpg");
+        } catch (Exception e) {
+            log.error("[VideoThumbnail] upload error for file={}", baseFileName, e);
+            return null;
+        }
     }
 
     @Override
@@ -772,13 +788,18 @@ public class GenerationsServiceImpl implements GenerationsService {
         return null;
     }
 
+    private static final int VIDEO_EFFECT_PRIVATE_COST = 20;
+    private static final int VIDEO_EFFECT_720P_COST = 200;
+
     @Override
     public List<VideoEffectConfigDTO> getVideoEffects() {
         return videoEffectConfigRepository.findAllByDeletedFalse().stream()
                 .map(e -> new VideoEffectConfigDTO()
                         .setEffectId(e.getEffectId())
                         .setLabel(e.getLabel())
-                        .setUrl(e.getUrl()))
+                        .setUrl(e.getUrl())
+                        .setPrivateCost(VIDEO_EFFECT_PRIVATE_COST)
+                        .setCost720p(VIDEO_EFFECT_720P_COST))
                 .toList();
     }
 

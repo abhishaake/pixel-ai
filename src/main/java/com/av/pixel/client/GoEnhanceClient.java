@@ -25,7 +25,7 @@ public class GoEnhanceClient {
     private static final String JOB_STATUS_URL = "/api/v1/jobs/detail?img_uuid=";
     private static final String EFFECT_LIST_URL = "/api/v1/videoeffect/list";
 
-    private static final String MOCK_VIDEO_URL = "https://cdn4.goenhance.ai/source/lLC4oSUcjt7Gxn6myXO7yU57zSMCpBW-LQBywhteGASJV-bFBwHarPigu9P9YZ7-WykeSut7ln4XnPyu9MdEfwjLYuwbJu4ulc-Is6wruwhuRmAKCCovxuGz7IRFK79ioXx3lDyF4rzcwSNOSG3PWO9r0XPUm-NH7GUuBwWh8i4dIZu2T8ybtiQj.mp4";
+    private static final String MOCK_VIDEO_URL = "https://cdn.goenhance.ai/video/static/effects/6a03d75e-851a-48f3-837d-4414b7be643d.mp4";
 
     @Value("${goenhance.api.key}")
     private String apiKey;
