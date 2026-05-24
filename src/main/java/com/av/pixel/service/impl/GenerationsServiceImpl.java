@@ -789,7 +789,7 @@ public class GenerationsServiceImpl implements GenerationsService {
         return null;
     }
 
-    private static final int VIDEO_EFFECT_PRIVATE_COST = 200;
+    private static final int VIDEO_EFFECT_PRIVATE_COST = 20;
     private static final int VIDEO_EFFECT_720P_COST = 200;
 
     @Override
