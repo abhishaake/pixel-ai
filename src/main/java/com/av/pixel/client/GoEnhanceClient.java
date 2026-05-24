@@ -54,9 +54,9 @@ public class GoEnhanceClient {
 
         HttpEntity<GoEnhanceGenerateRequest> entity = new HttpEntity<>(request, buildHeaders());
         try {
-            ResponseEntity<GoEnhanceGenerateResponse> response =
-                    restTemplate.exchange(url, HttpMethod.POST, entity, GoEnhanceGenerateResponse.class);
-            GoEnhanceGenerateResponse body = response.getBody();
+            ResponseEntity<String> response =
+                    restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
+            GoEnhanceGenerateResponse body = TransformUtil.fromJson(response.getBody(), GoEnhanceGenerateResponse.class);
             if (body == null || !body.isSuccessful()) {
                 log.error("[GoEnhance] generate failed effectId={} msg={}", effectId, body != null ? body.getMsg() : "null response");
                 return null;
@@ -80,9 +80,9 @@ public class GoEnhanceClient {
         String url = BASE_URL + JOB_STATUS_URL + imgUuid;
         HttpEntity<Void> entity = new HttpEntity<>(buildHeaders());
         try {
-            ResponseEntity<GoEnhanceJobResponse> response =
-                    restTemplate.exchange(url, HttpMethod.GET, entity, GoEnhanceJobResponse.class);
-            return response.getBody();
+            ResponseEntity<String> response =
+                    restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+            return TransformUtil.fromJson(response.getBody(), GoEnhanceJobResponse.class);
         } catch (HttpClientErrorException | HttpServerErrorException e) {
             log.error("[GoEnhance] job status failed uuid={} status={} body={}", imgUuid, e.getStatusCode(), e.getResponseBodyAsString());
             throw e;
