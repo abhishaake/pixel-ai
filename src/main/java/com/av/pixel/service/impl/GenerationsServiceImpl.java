@@ -660,6 +660,7 @@ public class GenerationsServiceImpl implements GenerationsService {
                     .setImgUuid(generateResponse.getImgUuid())
                     .setUserCode(userDTO.getCode())
                     .setEffect(effectId)
+                    .setResolution(resolution)
                     .setReferenceImageUrl(referenceImageUrl)
                     .setPrivateImage(request.getPrivateImage())
                     .setStatus(VideoEffectJobStatusEnum.PENDING));
@@ -698,7 +699,7 @@ public class GenerationsServiceImpl implements GenerationsService {
 
         Generations generations = generationHelper.saveVideoEffectGeneration(
                 job.getUserCode(), job.getEffect(), s3VideoUrl, thumbnailUrl,
-                job.getReferenceImageUrl(), Boolean.TRUE.equals(job.getPrivateImage()));
+                job.getReferenceImageUrl(), job.getResolution(), Boolean.TRUE.equals(job.getPrivateImage()));
 
         asyncUtil.executeAsync(() -> {
             userCreditService.debitUserCredit(job.getUserCode(), VIDEO_EFFECT_COST,
@@ -788,7 +789,7 @@ public class GenerationsServiceImpl implements GenerationsService {
         return null;
     }
 
-    private static final int VIDEO_EFFECT_PRIVATE_COST = 20;
+    private static final int VIDEO_EFFECT_PRIVATE_COST = 200;
     private static final int VIDEO_EFFECT_720P_COST = 200;
 
     @Override
@@ -798,6 +799,7 @@ public class GenerationsServiceImpl implements GenerationsService {
                         .setEffectId(e.getEffectId())
                         .setLabel(e.getLabel())
                         .setUrl(e.getUrl())
+                        .setBaseCost(VIDEO_EFFECT_COST)
                         .setPrivateCost(VIDEO_EFFECT_PRIVATE_COST)
                         .setCost720p(VIDEO_EFFECT_720P_COST))
                 .toList();

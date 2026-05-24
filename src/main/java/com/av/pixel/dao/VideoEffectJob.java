@@ -16,6 +16,7 @@ public class VideoEffectJob extends BaseEntity {
     String imgUuid;
     String userCode;
     String effect;
+    String resolution;
     String referenceImageUrl;
     Boolean privateImage;
     VideoEffectJobStatusEnum status;

@@ -9,6 +9,7 @@ public class VideoEffectConfigDTO {
     String effectId;
     String label;
     String url;
+    Integer baseCost;
     Integer privateCost;
     Integer cost720p;
 }

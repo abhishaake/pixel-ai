@@ -105,7 +105,7 @@ public class GenerationHelper {
         return generations;
     }
 
-    public Generations saveVideoEffectGeneration(String userCode, String effect, String videoUrl, String thumbnailUrl, String referenceImageUrl, boolean privateImage) {
+    public Generations saveVideoEffectGeneration(String userCode, String effect, String videoUrl, String thumbnailUrl, String referenceImageUrl, String resolution, boolean privateImage) {
         PromptImage promptImage = new PromptImage()
                 .setImageId(1)
                 .setUrl(videoUrl)
@@ -115,7 +115,8 @@ public class GenerationHelper {
         Generations generations = new Generations()
                 .setImages(List.of(promptImage))
                 .setUserCode(userCode)
-                .setModel(effect)
+                .setUserPrompt(kebabToTitleCase(effect))
+                .setResolution(resolution)
                 .setLikes(0L)
                 .setViews(0L)
                 .setPrivateImage(privateImage)
@@ -142,5 +143,20 @@ public class GenerationHelper {
         } catch (IllegalArgumentException e) {
             return null;
         }
+    }
+
+    /** Converts a kebab-case effect ID to Title Case. e.g. "alien-kidnap" → "Alien Kidnap" */
+    private static String kebabToTitleCase(String value) {
+        if (value == null || value.isBlank()) return value;
+        String[] words = value.split("_");
+        StringBuilder sb = new StringBuilder();
+        for (String word : words) {
+            if (!word.isEmpty()) {
+                if (!sb.isEmpty()) sb.append(' ');
+                sb.append(Character.toUpperCase(word.charAt(0)));
+                sb.append(word.substring(1).toLowerCase());
+            }
+        }
+        return sb.toString();
     }
 }
