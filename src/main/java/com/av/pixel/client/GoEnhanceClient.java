@@ -15,6 +15,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 @Slf4j
@@ -33,7 +34,13 @@ public class GoEnhanceClient {
     @Value("${goenhance.mock.enabled:false}")
     private boolean mockEnabled;
 
+
+    private int mockDelaySeconds = 30;
+
     private final RestTemplate restTemplate;
+
+    /** Tracks mock job submission time (uuid → epoch ms) to simulate delayed completion. */
+    private final ConcurrentHashMap<String, Long> mockJobSubmittedAt = new ConcurrentHashMap<>();
 
     public GoEnhanceClient(RestTemplate restTemplate) {
         this.restTemplate = restTemplate;
@@ -41,7 +48,7 @@ public class GoEnhanceClient {
 
     public GoEnhanceGenerateResponse generateVideoEffect(String effectId, String imageUrl, String resolution) {
         if (mockEnabled) {
-            log.info("[GoEnhance][MOCK] generateVideoEffect effectId={}", effectId);
+            log.info("[GoEnhance][MOCK] generateVideoEffect effectId={} delaySeconds={}", effectId, mockDelaySeconds);
             return mockGenerateResponse();
         }
 
@@ -93,8 +100,11 @@ public class GoEnhanceClient {
     }
 
     private GoEnhanceGenerateResponse mockGenerateResponse() {
+        String uuid = UUID.randomUUID().toString();
+        mockJobSubmittedAt.put(uuid, System.currentTimeMillis());
+
         GoEnhanceGenerateResponse.Data data = new GoEnhanceGenerateResponse.Data();
-        data.setImgUuid(UUID.randomUUID().toString());
+        data.setImgUuid(uuid);
         data.setCost(0);
 
         GoEnhanceGenerateResponse response = new GoEnhanceGenerateResponse();
@@ -105,6 +115,25 @@ public class GoEnhanceClient {
     }
 
     private GoEnhanceJobResponse mockJobResponse(String imgUuid) {
+        long elapsedSeconds = (System.currentTimeMillis() - mockJobSubmittedAt.getOrDefault(imgUuid, 0L)) / 1000;
+        boolean ready = mockDelaySeconds <= 0 || elapsedSeconds >= mockDelaySeconds;
+
+        if (!ready) {
+            log.info("[GoEnhance][MOCK] job still pending uuid={} elapsed={}s delay={}s", imgUuid, elapsedSeconds, mockDelaySeconds);
+            GoEnhanceJobResponse.Data data = new GoEnhanceJobResponse.Data();
+            data.setImgUuid(imgUuid);
+            data.setStatus("pending");
+
+            GoEnhanceJobResponse response = new GoEnhanceJobResponse();
+            response.setCode(0);
+            response.setMsg("Success");
+            response.setData(data);
+            return response;
+        }
+
+        log.info("[GoEnhance][MOCK] job success uuid={} elapsed={}s", imgUuid, elapsedSeconds);
+        mockJobSubmittedAt.remove(imgUuid);
+
         GoEnhanceJobResponse.JsonValue jsonValue = new GoEnhanceJobResponse.JsonValue();
         jsonValue.setType("video");
         jsonValue.setValue(MOCK_VIDEO_URL);
