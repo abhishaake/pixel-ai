@@ -814,7 +814,7 @@ public class GenerationsServiceImpl implements GenerationsService {
                 return;
             }
 
-            videoEffectConfigRepository.deleteAll();
+            // videoEffectConfigRepository.deleteAll();
 
             List<VideoEffectConfig> configs = listResponse.getData().stream()
                     .map(item -> new VideoEffectConfig()
@@ -822,7 +822,7 @@ public class GenerationsServiceImpl implements GenerationsService {
                             .setLabel(item.getLabel())
                             .setUrl(item.getUrl()))
                     .toList();
-
+            videoEffectConfigRepository.deleteAll();
             videoEffectConfigRepository.saveAll(configs);
             log.info("refreshVideoEffects: saved {} effects", configs.size());
         } catch (Exception e) {
