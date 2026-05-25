@@ -114,15 +114,17 @@ public class S3ServiceImpl implements S3Service {
 
     public String getImageExtensionName (HttpResponse<byte[]> response) {
         String contentType = response.headers().firstValue("Content-Type").orElse("application/octet-stream");
-        String extension;
         if (contentType.equalsIgnoreCase("image/png")) {
-            extension = ".png";
+            return ".png";
         } else if (contentType.equalsIgnoreCase("image/jpeg") || contentType.equalsIgnoreCase("image/jpg")) {
-            extension = ".jpg";
+            return ".jpg";
+        } else if (contentType.equalsIgnoreCase("video/mp4")) {
+            return ".mp4";
+        } else if (contentType.equalsIgnoreCase("video/webm")) {
+            return ".webm";
         } else {
-            extension = ".png";
+            return ".png";
         }
-        return extension;
     }
 
 

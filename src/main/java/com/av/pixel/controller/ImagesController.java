@@ -3,6 +3,7 @@ package com.av.pixel.controller;
 import com.av.pixel.auth.Authenticated;
 import com.av.pixel.dto.GenerationsDTO;
 import com.av.pixel.dto.UserDTO;
+import com.av.pixel.dto.VideoEffectConfigDTO;
 import com.av.pixel.enums.PermissionEnum;
 import com.av.pixel.exception.Error;
 import com.av.pixel.helper.TransformUtil;
@@ -11,10 +12,13 @@ import com.av.pixel.request.GenerationsFilterRequest;
 import com.av.pixel.request.ImageActionRequest;
 import com.av.pixel.request.ImagePricingRequest;
 import com.av.pixel.request.ImageReportRequest;
+import com.av.pixel.request.VideoEffectRequest;
 import com.av.pixel.response.GenerationsFilterResponse;
 import com.av.pixel.response.ImagePricingResponse;
 import com.av.pixel.response.base.Response;
 import com.av.pixel.service.GenerationsService;
+
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -35,8 +39,11 @@ public class ImagesController {
 
     @PostMapping("/filter")
     @Authenticated(permissions = PermissionEnum.ANY)
-    public ResponseEntity<Response<GenerationsFilterResponse>> filterImages(UserDTO userDTO, @RequestBody GenerationsFilterRequest imageFilterRequest) {
-        return response(imagesService.filterImages(userDTO, imageFilterRequest), HttpStatus.OK);
+    public ResponseEntity<Response<GenerationsFilterResponse>> filterImages(
+            UserDTO userDTO,
+            @RequestBody GenerationsFilterRequest imageFilterRequest,
+            @RequestParam(value = "includeVideoEffects", defaultValue = "false") boolean includeVideoEffects) {
+        return response(imagesService.filterImages(userDTO, imageFilterRequest, includeVideoEffects), HttpStatus.OK);
     }
 
     @GetMapping("/pricing")
@@ -64,6 +71,26 @@ public class ImagesController {
             throw new Error(HttpStatus.BAD_REQUEST, "Invalid request");
         }
         return response(imagesService.generate(userDTO, generateRequestObject, file), HttpStatus.CREATED);
+    }
+
+    @GetMapping("/effects")
+    @Authenticated
+    public ResponseEntity<Response<List<VideoEffectConfigDTO>>> getVideoEffects(UserDTO userDTO) {
+        return response(imagesService.getVideoEffects(), HttpStatus.OK);
+    }
+
+    @PostMapping(value = "/generate/goenhance")
+    @Authenticated
+    public ResponseEntity<Response<GenerationsDTO>> generateVideoEffect(
+            UserDTO userDTO,
+            @RequestParam(value = "body") String request,
+            @RequestParam(value = "reference_image") MultipartFile file
+    ) {
+        VideoEffectRequest videoEffectRequest = TransformUtil.fromJson(request, VideoEffectRequest.class);
+        if (videoEffectRequest == null) {
+            throw new Error(HttpStatus.BAD_REQUEST, "Invalid request");
+        }
+        return response(imagesService.generateVideoEffect(userDTO, videoEffectRequest, file), HttpStatus.CREATED);
     }
 
     @Authenticated

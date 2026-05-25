@@ -2,6 +2,7 @@ package com.av.pixel.helper;
 
 import com.av.pixel.dao.GenerationHistory;
 import com.av.pixel.dao.Generations;
+import com.av.pixel.dao.PromptImage;
 import com.av.pixel.dto.GenerationsDTO;
 import com.av.pixel.enums.ImageStyleEnum;
 import com.av.pixel.mapper.GenerationsMap;
@@ -104,6 +105,36 @@ public class GenerationHelper {
         return generations;
     }
 
+    public Generations saveVideoEffectGeneration(String userCode, String effect, String videoUrl, String thumbnailUrl, String referenceImageUrl, String resolution, boolean privateImage) {
+        PromptImage promptImage = new PromptImage()
+                .setImageId(1)
+                .setUrl(videoUrl)
+                .setThumbnail(thumbnailUrl != null ? thumbnailUrl : videoUrl)
+                .setSafeImage(true);
+
+        Generations generations = new Generations()
+                .setImages(List.of(promptImage))
+                .setUserCode(userCode)
+                .setUserPrompt(kebabToTitleCase(effect))
+                .setResolution(resolution)
+                .setLikes(0L)
+                .setViews(0L)
+                .setPrivateImage(privateImage)
+                .setVideoEffect(true)
+                .setCharacterRefImageUrl(referenceImageUrl)
+                .setEpoch(DateUtil.currentTimeSec());
+
+        generations = generationsRepository.save(generations);
+
+        GenerationHistory generationHistory = new GenerationHistory()
+                .setGenerationId(generations.getId().toString())
+                .setUserCode(userCode)
+                .setCost(0.0);
+
+        generationHistoryRepository.save(generationHistory);
+        return generations;
+    }
+
     public Generations getById (String id) {
         try {
             ObjectId objectId = new ObjectId(id);
@@ -112,5 +143,20 @@ public class GenerationHelper {
         } catch (IllegalArgumentException e) {
             return null;
         }
+    }
+
+    /** Converts a kebab-case effect ID to Title Case. e.g. "alien-kidnap" → "Alien Kidnap" */
+    private static String kebabToTitleCase(String value) {
+        if (value == null || value.isBlank()) return value;
+        String[] words = value.split("_");
+        StringBuilder sb = new StringBuilder();
+        for (String word : words) {
+            if (!word.isEmpty()) {
+                if (!sb.isEmpty()) sb.append(' ');
+                sb.append(Character.toUpperCase(word.charAt(0)));
+                sb.append(word.substring(1).toLowerCase());
+            }
+        }
+        return sb.toString();
     }
 }

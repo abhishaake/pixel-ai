@@ -31,4 +31,6 @@ public class GenerationsDTO {
     String colorPalette;
     String aspectRatio;
     String characterRefImageUrl;
+    Boolean videoEffect;
+    String message;
 }
