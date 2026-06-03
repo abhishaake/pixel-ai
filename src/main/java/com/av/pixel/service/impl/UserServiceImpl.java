@@ -1,8 +1,10 @@
 package com.av.pixel.service.impl;
 
+import com.av.pixel.dao.LoginCode;
 import com.av.pixel.dao.User;
 import com.av.pixel.dao.UserCredit;
 import com.av.pixel.dao.UserToken;
+import com.av.pixel.exception.AuthenticationException;
 import com.av.pixel.dto.UserCreditDTO;
 import com.av.pixel.dto.UserDTO;
 import com.av.pixel.dto.UserTokenDTO;
@@ -10,7 +12,9 @@ import com.av.pixel.helper.SequenceGeneratorService;
 import com.av.pixel.helper.UserHelper;
 import com.av.pixel.mapper.UserCreditMap;
 import com.av.pixel.mapper.UserMap;
+import com.av.pixel.repository.LoginCodeRepository;
 import com.av.pixel.repository.UserRepository;
+import com.av.pixel.request.CodeSignInRequest;
 import com.av.pixel.request.SignInRequest;
 import com.av.pixel.request.SignUpRequest;
 import com.av.pixel.response.SignInResponse;
@@ -42,6 +46,7 @@ import java.util.stream.Collectors;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
+    private final LoginCodeRepository loginCodeRepository;
     private final UserHelper userHelper;
     private final SequenceGeneratorService sequenceGeneratorService;
     private final UserCreditService userCreditService;
@@ -108,6 +113,44 @@ public class UserServiceImpl implements UserService {
         UserTokenDTO userTokenDTO = userTokenService.getUserToken(user.getCode());
         if (Objects.isNull(userTokenDTO)) {
             userTokenDTO = userTokenService.registerToken(user.getCode(), signInRequest.getAuthToken());
+        }
+
+        return UserMap.toResponse(userDTO, userCreditDTO, userTokenDTO);
+    }
+
+    @Override
+    @Transactional
+    public SignInResponse signInWithCode (CodeSignInRequest codeSignInRequest) {
+        if (Objects.isNull(codeSignInRequest) || StringUtils.isEmpty(codeSignInRequest.getCode())
+                || !codeSignInRequest.getCode().matches("\\d{10}")) {
+            throw new AuthenticationException();
+        }
+
+        LoginCode loginCode = loginCodeRepository.findByCodeAndDeletedFalse(codeSignInRequest.getCode());
+        if (Objects.isNull(loginCode)) {
+            throw new AuthenticationException();
+        }
+
+        User user = userRepository.findByCodeAndDeletedFalse(loginCode.getUserCode());
+        if (Objects.isNull(user)) {
+            throw new AuthenticationException();
+        }
+
+        int loginCount = Objects.nonNull(loginCode.getSuccessfulLoginCount())
+                ? loginCode.getSuccessfulLoginCount() : 0;
+        loginCode.setSuccessfulLoginCount(loginCount + 1);
+        loginCodeRepository.save(loginCode);
+
+        UserDTO userDTO = UserMap.toUserDTO(user);
+        UserCreditDTO userCreditDTO = userCreditService.getUserCredit(user);
+
+        UserTokenDTO userTokenDTO = userTokenService.getUserToken(user.getCode());
+        if (Objects.isNull(userTokenDTO)) {
+            if (StringUtils.isNotEmpty(codeSignInRequest.getAuthToken())) {
+                userTokenDTO = userTokenService.registerToken(user.getCode(), codeSignInRequest.getAuthToken());
+            } else {
+                userTokenDTO = userTokenService.registerToken(user.getCode());
+            }
         }
 
         return UserMap.toResponse(userDTO, userCreditDTO, userTokenDTO);
