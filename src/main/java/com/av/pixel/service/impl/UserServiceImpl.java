@@ -121,8 +121,7 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public SignInResponse signInWithCode (CodeSignInRequest codeSignInRequest) {
-        if (Objects.isNull(codeSignInRequest) || StringUtils.isEmpty(codeSignInRequest.getCode())
-                || !codeSignInRequest.getCode().matches("\\d{10}")) {
+        if (Objects.isNull(codeSignInRequest) || StringUtils.isEmpty(codeSignInRequest.getCode())) {
             throw new AuthenticationException();
         }
 
