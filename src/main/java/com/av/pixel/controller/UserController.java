@@ -2,6 +2,7 @@ package com.av.pixel.controller;
 
 import com.av.pixel.auth.Authenticated;
 import com.av.pixel.dto.UserDTO;
+import com.av.pixel.request.CodeSignInRequest;
 import com.av.pixel.request.SignInRequest;
 import com.av.pixel.request.SignUpRequest;
 import com.av.pixel.response.SignInResponse;
@@ -36,6 +37,11 @@ public class UserController {
     @PostMapping("/signIn")
     public ResponseEntity<Response<SignInResponse>> signIn (@RequestBody SignInRequest signInRequest) {
         return response(userService.signIn(signInRequest), HttpStatus.OK);
+    }
+
+    @PostMapping("/signInWithCode")
+    public ResponseEntity<Response<SignInResponse>> signInWithCode (@RequestBody CodeSignInRequest codeSignInRequest) {
+        return response(userService.signInWithCode(codeSignInRequest), HttpStatus.OK);
     }
 
     @PostMapping("/logOut")

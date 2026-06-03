@@ -2,6 +2,7 @@ package com.av.pixel.service;
 
 import com.av.pixel.dao.User;
 import com.av.pixel.dto.UserDTO;
+import com.av.pixel.request.CodeSignInRequest;
 import com.av.pixel.request.SignInRequest;
 import com.av.pixel.request.SignUpRequest;
 import com.av.pixel.response.SignInResponse;
@@ -18,6 +19,8 @@ public interface UserService {
     SignUpResponse signUp(SignUpRequest signUpRequest);
 
     SignInResponse signIn(SignInRequest signInRequest);
+
+    SignInResponse signInWithCode(CodeSignInRequest codeSignInRequest);
 
     String logout(String accessToken);
 
