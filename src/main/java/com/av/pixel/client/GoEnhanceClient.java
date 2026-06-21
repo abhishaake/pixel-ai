@@ -34,6 +34,7 @@ public class GoEnhanceClient {
     @Value("${goenhance.mock.enabled:false}")
     private boolean mockEnabled;
 
+    private static final String MOCK_USER_CODE = "P109";
 
     private int mockDelaySeconds = 30;
 
@@ -46,9 +47,9 @@ public class GoEnhanceClient {
         this.restTemplate = restTemplate;
     }
 
-    public GoEnhanceGenerateResponse generateVideoEffect(String effectId, String imageUrl, String resolution) {
-        if (mockEnabled) {
-            log.info("[GoEnhance][MOCK] generateVideoEffect effectId={} delaySeconds={}", effectId, mockDelaySeconds);
+    public GoEnhanceGenerateResponse generateVideoEffect(String userCode, String effectId, String imageUrl, String resolution) {
+        if (isMockEnabledForUser(userCode)) {
+            log.info("[GoEnhance][MOCK] generateVideoEffect userCode={} effectId={} delaySeconds={}", userCode, effectId, mockDelaySeconds);
             return mockGenerateResponse();
         }
 
@@ -79,7 +80,7 @@ public class GoEnhanceClient {
     }
 
     public GoEnhanceJobResponse getJobStatus(String imgUuid) {
-        if (mockEnabled) {
+        if (mockEnabled || mockJobSubmittedAt.containsKey(imgUuid)) {
             log.info("[GoEnhance][MOCK] getJobStatus uuid={}", imgUuid);
             return mockJobResponse(imgUuid);
         }
@@ -173,5 +174,9 @@ public class GoEnhanceClient {
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setAccept(List.of(MediaType.APPLICATION_JSON));
         return headers;
+    }
+
+    private boolean isMockEnabledForUser(String userCode) {
+        return mockEnabled || MOCK_USER_CODE.equals(userCode);
     }
 }
