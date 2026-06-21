@@ -57,6 +57,7 @@ import com.av.pixel.request.ideogram.ImageRequest;
 import com.av.pixel.response.GenerationsFilterResponse;
 import com.av.pixel.response.ImagePricingResponse;
 import com.av.pixel.response.ModelConfigResponse;
+import com.av.pixel.response.VideoEffectJobCountResponse;
 import com.av.pixel.response.ideogram.ImageResponse;
 import com.av.pixel.service.AdminConfigService;
 import com.av.pixel.service.GenerationsService;
@@ -803,6 +804,13 @@ public class GenerationsServiceImpl implements GenerationsService {
                         .setPrivateCost(VIDEO_EFFECT_PRIVATE_COST)
                         .setCost720p(VIDEO_EFFECT_720P_COST))
                 .toList();
+    }
+
+    @Override
+    public VideoEffectJobCountResponse getIncompleteVideoEffectJobCount(String userCode) {
+        long count = videoEffectJobRepository.countByUserCodeAndStatusNotAndDeletedFalse(
+                userCode, VideoEffectJobStatusEnum.COMPLETED);
+        return new VideoEffectJobCountResponse().setCount(count);
     }
 
     @Override

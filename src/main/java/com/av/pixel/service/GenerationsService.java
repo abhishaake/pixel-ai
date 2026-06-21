@@ -13,6 +13,7 @@ import com.av.pixel.request.VideoEffectRequest;
 import com.av.pixel.response.GenerationsFilterResponse;
 import com.av.pixel.response.ImagePricingResponse;
 import com.av.pixel.response.ModelConfigResponse;
+import com.av.pixel.response.VideoEffectJobCountResponse;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -38,6 +39,8 @@ public interface GenerationsService {
     void processPendingVideoEffectJobs();
 
     List<VideoEffectConfigDTO> getVideoEffects();
+
+    VideoEffectJobCountResponse getIncompleteVideoEffectJobCount(String userCode);
 
     void refreshVideoEffects();
 
