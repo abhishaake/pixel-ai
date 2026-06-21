@@ -16,6 +16,7 @@ import com.av.pixel.request.VideoEffectRequest;
 import com.av.pixel.response.GenerationsFilterResponse;
 import com.av.pixel.response.ImagePricingResponse;
 import com.av.pixel.response.base.Response;
+import com.av.pixel.response.VideoEffectJobCountResponse;
 import com.av.pixel.service.GenerationsService;
 
 import java.util.List;
@@ -77,6 +78,12 @@ public class ImagesController {
     @Authenticated
     public ResponseEntity<Response<List<VideoEffectConfigDTO>>> getVideoEffects(UserDTO userDTO) {
         return response(imagesService.getVideoEffects(), HttpStatus.OK);
+    }
+
+    @GetMapping("/effects/jobs/incomplete-count")
+    @Authenticated
+    public ResponseEntity<Response<VideoEffectJobCountResponse>> getIncompleteVideoEffectJobCount(UserDTO userDTO) {
+        return response(imagesService.getIncompleteVideoEffectJobCount(userDTO.getCode()), HttpStatus.OK);
     }
 
     @PostMapping(value = "/generate/goenhance")
