@@ -651,7 +651,8 @@ public class GenerationsServiceImpl implements GenerationsService {
             }
 
             String resolution = GoEnhanceResolutionEnum.fromValue(request.getResolution()).getValue();
-            GoEnhanceGenerateResponse generateResponse = goEnhanceClient.generateVideoEffect(effectId, referenceImageUrl, resolution);
+            GoEnhanceGenerateResponse generateResponse = goEnhanceClient.generateVideoEffect(
+                    userDTO.getCode(), effectId, referenceImageUrl, resolution);
             if (generateResponse == null || generateResponse.getImgUuid() == null) {
                 throw new Error("Failed to submit video effect job, please try again");
             }
