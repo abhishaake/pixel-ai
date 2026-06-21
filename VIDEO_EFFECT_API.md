@@ -42,11 +42,25 @@ App                              Backend                        GoEnhance
 
 ## Endpoints
 
+### Authentication (all endpoints below)
+
+All video effect endpoints require a logged-in user. Send the access token using **one** of:
+
+| Method | Example |
+|---|---|
+| Request header | `token: <accessToken>` |
+| Cookie | `token=<accessToken>` |
+| Query param | `?token=<accessToken>` |
+
+If the token is missing or invalid, the API returns **`401 Unauthorized`**.
+
+---
+
 ### 1. Get Available Effects
 
 ```
 GET /api/v1/images/effects
-Authorization: Bearer <token>
+token: <accessToken>
 ```
 
 **Response `200 OK`**
@@ -100,11 +114,80 @@ Authorization: Bearer <token>
 
 ---
 
-### 2. Generate Video Effect
+### 2. Get Incomplete Video Effect Job Count
+
+Returns how many video effect jobs for the **logged-in user** are still not completed. Use this to show a badge, loading indicator, or "processing" banner after Case B async responses.
+
+```
+GET /api/v1/images/effects/jobs/incomplete-count
+token: <accessToken>
+```
+
+**What is counted**
+
+| Included | Excluded |
+|---|---|
+| `PENDING` jobs for the current user | `COMPLETED` jobs |
+| `FAILED` jobs for the current user | Other users' jobs |
+| Non-deleted jobs only | Deleted jobs |
+
+**Response `200 OK`**
+
+```json
+{
+  "serverTime": 1750000000,
+  "data": {
+    "count": 2
+  },
+  "success": true,
+  "statusCode": 200,
+  "message": "OK"
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `data.count` | `number` | Number of incomplete jobs for the logged-in user |
+
+**Example (fetch)**
+
+```javascript
+const response = await fetch("/api/v1/images/effects/jobs/incomplete-count", {
+  headers: { token: accessToken },
+});
+const { data } = await response.json();
+// data.count === 0  → no jobs still processing
+// data.count > 0    → show processing UI / poll feed
+```
+
+**Example (axios)**
+
+```javascript
+const { data } = await axios.get("/api/v1/images/effects/jobs/incomplete-count", {
+  headers: { token: accessToken },
+});
+const incompleteCount = data.data.count;
+```
+
+**Suggested frontend usage**
+
+1. After `POST /generate/goenhance` returns Case B (`data.message` is present), call this endpoint to confirm there is an active job.
+2. Poll this endpoint every 30–60 seconds while `count > 0`.
+3. When `count` drops to `0`, refresh the user's feed with `POST /filter?includeVideoEffects=true` to load the finished video.
+
+**Error responses**
+
+| HTTP Status | Scenario |
+|---|---|
+| `401 Unauthorized` | Missing or invalid token |
+
+---
+
+### 3. Generate Video Effect
 
 ```
 POST /api/v1/images/generate/goenhance
-Authorization: Bearer <token>
+token: <accessToken>
 Content-Type: multipart/form-data
 ```
 
@@ -145,7 +228,7 @@ request.add(
     fileName: "image.jpg",
     mimeType: "image/jpeg"
 )
-POST("/api/v1/images/generate/goenhance", headers: [.bearer(token)])
+POST("/api/v1/images/generate/goenhance", headers: ["token": token])
 ```
 
 **Example (multipart, Kotlin pseudocode)**
@@ -241,7 +324,7 @@ By default, the `/filter` feed **excludes** video effects. To include them (e.g.
 
 ```
 POST /api/v1/images/filter?includeVideoEffects=true
-Authorization: Bearer <token>
+token: <accessToken>
 Content-Type: application/json
 ```
 
@@ -269,6 +352,7 @@ If the GoEnhance job doesn't complete within the synchronous poll window (~60 se
 
 The `VideoEffectJobScheduler` runs every **5 minutes** and picks up any `PENDING` jobs, completes them, and debits credits. The app should either:
 
+- **Poll** `GET /api/v1/images/effects/jobs/incomplete-count` while `count > 0`, then refresh the feed when it reaches `0`, or
 - **Poll** `GET /api/v1/images/filter?includeVideoEffects=true` on the user's profile until the generation appears, or
 - **Listen for a push notification** (when that integration is wired).
 

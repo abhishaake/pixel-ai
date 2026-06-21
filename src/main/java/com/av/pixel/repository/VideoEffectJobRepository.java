@@ -12,4 +12,6 @@ import java.util.List;
 public interface VideoEffectJobRepository extends MongoRepository<VideoEffectJob, ObjectId> {
 
     List<VideoEffectJob> findAllByStatusAndDeletedFalse(VideoEffectJobStatusEnum status);
+
+    long countByUserCodeAndStatusNotAndDeletedFalse(String userCode, VideoEffectJobStatusEnum status);
 }
