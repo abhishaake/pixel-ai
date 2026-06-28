@@ -38,7 +38,7 @@ public interface GenerationsService {
 
     void processPendingVideoEffectJobs();
 
-    List<VideoEffectConfigDTO> getVideoEffects();
+    List<VideoEffectConfigDTO> getVideoEffects(boolean excludeIntimate);
 
     VideoEffectJobCountResponse getIncompleteVideoEffectJobCount(String userCode);
 

@@ -76,8 +76,10 @@ public class ImagesController {
 
     @GetMapping("/effects")
     @Authenticated
-    public ResponseEntity<Response<List<VideoEffectConfigDTO>>> getVideoEffects(UserDTO userDTO) {
-        return response(imagesService.getVideoEffects(), HttpStatus.OK);
+    public ResponseEntity<Response<List<VideoEffectConfigDTO>>> getVideoEffects(
+            UserDTO userDTO,
+            @RequestParam(value = "excludeIntimate", defaultValue = "false") boolean excludeIntimate) {
+        return response(imagesService.getVideoEffects(excludeIntimate), HttpStatus.OK);
     }
 
     @GetMapping("/effects/jobs/incomplete-count")

@@ -17,4 +17,5 @@ public class VideoEffectConfig extends BaseEntity {
     String effectId;
     String label;
     String url;
+    boolean intimate;
 }

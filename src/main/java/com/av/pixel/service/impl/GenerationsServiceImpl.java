@@ -795,8 +795,9 @@ public class GenerationsServiceImpl implements GenerationsService {
     private static final int VIDEO_EFFECT_720P_COST = 200;
 
     @Override
-    public List<VideoEffectConfigDTO> getVideoEffects() {
+    public List<VideoEffectConfigDTO> getVideoEffects(boolean excludeIntimate) {
         return videoEffectConfigRepository.findAllByDeletedFalse().stream()
+                .filter(e -> !(excludeIntimate && e.isIntimate()))
                 .map(e -> new VideoEffectConfigDTO()
                         .setEffectId(e.getEffectId())
                         .setLabel(e.getLabel())
