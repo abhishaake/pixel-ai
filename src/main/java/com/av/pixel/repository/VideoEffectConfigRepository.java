@@ -11,4 +11,6 @@ import java.util.List;
 public interface VideoEffectConfigRepository extends MongoRepository<VideoEffectConfig, ObjectId> {
 
     List<VideoEffectConfig> findAllByDeletedFalse();
+
+    VideoEffectConfig findByEffectId(String effectId);
 }
