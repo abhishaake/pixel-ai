@@ -17,6 +17,7 @@ public class GoEnhanceJobResponse {
     String requestId;
 
     @lombok.Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Data {
         @JsonProperty("img_uuid")
         String imgUuid;
@@ -35,6 +36,7 @@ public class GoEnhanceJobResponse {
     }
 
     @lombok.Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class JsonValue {
         String type;
         String value;
