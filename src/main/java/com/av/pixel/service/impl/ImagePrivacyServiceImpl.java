@@ -95,7 +95,10 @@ public class ImagePrivacyServiceImpl implements ImagePrivacyService {
     }
 
     private ImagePrivacyResponse unlockAndApply (String userCode, Generations generation) {
-        String key = "privacy_unlock_" + generation.getId();
+        // Keyed on the user, not the generation, so concurrent unlocks of *different*
+        // images cannot each pass the balance check and overdraw the account.
+        // Mirrors the "generation_" + userCode lock in GenerationsServiceImpl.generate.
+        String key = "privacy_unlock_" + userCode;
         boolean locked = locker.tryLock(key, 10);
 
         if (!locked) {
