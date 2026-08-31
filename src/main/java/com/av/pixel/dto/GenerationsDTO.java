@@ -26,6 +26,8 @@ public class GenerationsDTO {
     Long seed;
     String resolution;
     Boolean privateImage;
+    Boolean privacyUnlocked;
+    Integer privacyUnlockCost;
     String style;
     boolean selfLike;
     String colorPalette;

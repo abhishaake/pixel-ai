@@ -22,12 +22,17 @@ import java.util.TreeSet;
 public class GenerationsMap {
 
     public static List<GenerationsDTO> toList (List<Generations> generations, TreeSet<String> likedGenerations, Map<String, User> userMap){
+        return toList(generations, likedGenerations, userMap, null);
+    }
+
+    public static List<GenerationsDTO> toList (List<Generations> generations, TreeSet<String> likedGenerations,
+                                               Map<String, User> userMap, Integer privacyUnlockCost){
         if (CollectionUtils.isEmpty(generations)) {
             return new ArrayList<>();
         }
         return generations.stream()
                 .map(g -> {
-                    GenerationsDTO genDTO = toGenerationsDTO(g);
+                    GenerationsDTO genDTO = toGenerationsDTO(g, privacyUnlockCost);
                     if (Objects.nonNull(genDTO)) {
                         if (Objects.nonNull(likedGenerations) && likedGenerations.contains(g.getId().toString())){
                             genDTO.setSelfLike(true);
@@ -44,6 +49,10 @@ public class GenerationsMap {
     }
 
     public static GenerationsDTO toGenerationsDTO(Generations generations){
+        return toGenerationsDTO(generations, null);
+    }
+
+    public static GenerationsDTO toGenerationsDTO(Generations generations, Integer privacyUnlockCost){
         if (Objects.isNull(generations)) {
             return null;
         }
@@ -66,6 +75,8 @@ public class GenerationsMap {
                 .setSeed(generations.getSeed())
                 .setResolution(generations.getResolution())
                 .setPrivateImage(generations.getPrivateImage())
+                .setPrivacyUnlocked(generations.getPrivacyUnlocked())
+                .setPrivacyUnlockCost(privacyUnlockCost)
                 .setStyle(styleEnum.getValue())
                 .setColorPalette(generations.getColorPalette())
                 .setCharacterRefImageUrl(generations.getCharacterRefImageUrl())
