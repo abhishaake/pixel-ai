@@ -4,5 +4,6 @@ public enum OrderTypeEnum {
     IMAGE_GENERATION,
     VIDEO_EFFECT,
     AD_CREDIT,
-    PURCHASE_CREDIT
+    PURCHASE_CREDIT,
+    PRIVACY_UNLOCK
 }

@@ -6,5 +6,7 @@ public interface AdminConfigService {
 
     Integer getDefaultCredits ();
 
+    Integer getPrivacyUnlockCost ();
+
     boolean isIdeogramClientDisabled(String userCode);
 }
