@@ -1,6 +1,7 @@
 package com.av.pixel.service.impl;
 
 import com.av.pixel.cache.Cache;
+import com.av.pixel.constants.Constants;
 import com.av.pixel.dao.AdminConfig;
 import com.av.pixel.exception.Error;
 import com.av.pixel.repository.AdminConfigRepository;
@@ -43,6 +44,16 @@ public class AdminConfigServiceImpl implements AdminConfigService {
             return 0;
         }
         return adminConfig.getDefaultNewUserCredit();
+    }
+
+    @Override
+    public Integer getPrivacyUnlockCost () {
+        AdminConfig adminConfig = Cache.adminConfigMap.get(ADMIN_CONFIG_KEY);
+
+        if (Objects.isNull(adminConfig) || Objects.isNull(adminConfig.getPrivacyUnlockCost())) {
+            return Constants.DEFAULT_PRIVACY_UNLOCK_COST;
+        }
+        return adminConfig.getPrivacyUnlockCost();
     }
 
     @Override

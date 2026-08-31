@@ -12,12 +12,15 @@ import com.av.pixel.request.GenerationsFilterRequest;
 import com.av.pixel.request.ImageActionRequest;
 import com.av.pixel.request.ImagePricingRequest;
 import com.av.pixel.request.ImageReportRequest;
+import com.av.pixel.request.UpdateImagePrivacyRequest;
 import com.av.pixel.request.VideoEffectRequest;
 import com.av.pixel.response.GenerationsFilterResponse;
 import com.av.pixel.response.ImagePricingResponse;
+import com.av.pixel.response.ImagePrivacyResponse;
 import com.av.pixel.response.base.Response;
 import com.av.pixel.response.VideoEffectJobCountResponse;
 import com.av.pixel.service.GenerationsService;
+import com.av.pixel.service.ImagePrivacyService;
 
 import java.util.List;
 import lombok.AllArgsConstructor;
@@ -37,6 +40,7 @@ import static com.av.pixel.mapper.ResponseMapper.response;
 public class ImagesController {
 
     GenerationsService imagesService;
+    ImagePrivacyService imagePrivacyService;
 
     @PostMapping("/filter")
     @Authenticated(permissions = PermissionEnum.ANY)
@@ -112,6 +116,14 @@ public class ImagesController {
     @PutMapping("/view")
     public ResponseEntity<Response<String>> addView (UserDTO userDTO, @RequestBody ImageActionRequest imageActionRequest) {
         return response(imagesService.addView(userDTO, imageActionRequest), HttpStatus.OK);
+    }
+
+    @Authenticated
+    @PutMapping("/privacy")
+    public ResponseEntity<Response<ImagePrivacyResponse>> updateImagePrivacy (
+            UserDTO userDTO,
+            @RequestBody UpdateImagePrivacyRequest request) {
+        return response(imagePrivacyService.updateImagePrivacy(userDTO, request), HttpStatus.OK);
     }
 
     @Authenticated(permissions = PermissionEnum.ANY)

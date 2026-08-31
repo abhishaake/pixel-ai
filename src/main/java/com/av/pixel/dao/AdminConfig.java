@@ -22,4 +22,5 @@ public class AdminConfig extends BaseEntity {
 
     private List<String> userCodesForTesting;
     private Boolean isTestingEnabledForUsers;
+    private Integer privacyUnlockCost;
 }

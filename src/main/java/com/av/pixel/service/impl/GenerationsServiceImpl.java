@@ -185,7 +185,7 @@ public class GenerationsServiceImpl implements GenerationsService {
                 userCreditService.debitUserCredit(userDTO.getCode(), imageGenerationCost, OrderTypeEnum.IMAGE_GENERATION, "SERVER", generations.getId().toString());
                 return null;
             });
-            GenerationsDTO res = GenerationsMap.toGenerationsDTO(generations);
+            GenerationsDTO res = GenerationsMap.toGenerationsDTO(generations, adminConfigService.getPrivacyUnlockCost());
             assert res != null;
             res.setUserName(userDTO.getFirstName())
                 .setUserImgUrl(userDTO.getImageUrl());
@@ -458,7 +458,7 @@ public class GenerationsServiceImpl implements GenerationsService {
             Map<String, User> userMap = userMapFuture.get();
 
             return new GenerationsFilterResponse(
-                GenerationsMap.toList(generationsPage.getContent(), likedGenerations, userMap),
+                GenerationsMap.toList(generationsPage.getContent(), likedGenerations, userMap, adminConfigService.getPrivacyUnlockCost()),
                 totalCount, 
                 generationsFilterRequest.getPage(), 
                 generationsPage.getNumberOfElements()
@@ -673,7 +673,7 @@ public class GenerationsServiceImpl implements GenerationsService {
 
             if (videoUrl != null) {
                 Generations generations = completeVideoEffectJob(job, videoUrl);
-                GenerationsDTO res = GenerationsMap.toGenerationsDTO(generations);
+                GenerationsDTO res = GenerationsMap.toGenerationsDTO(generations, adminConfigService.getPrivacyUnlockCost());
                 assert res != null;
                 return res.setUserName(userDTO.getFirstName()).setUserImgUrl(userDTO.getImageUrl());
             }
