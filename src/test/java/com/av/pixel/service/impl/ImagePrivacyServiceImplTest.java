@@ -14,6 +14,7 @@ import org.bson.types.ObjectId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
@@ -187,6 +188,21 @@ class ImagePrivacyServiceImplTest {
         assertThatThrownBy(() -> service.updateImagePrivacy(owner(), bad))
                 .isInstanceOf(Error.class)
                 .satisfies(e -> assertThat(((Error) e).getHttpStatus()).isEqualTo(HttpStatus.BAD_REQUEST));
+    }
+
+    @Test
+    void lockIsKeyedOnUserSoConcurrentUnlocksOfDifferentImagesCannotOverdraw() {
+        stored(OWNER, false, null);
+
+        service.updateImagePrivacy(owner(), request(true));
+
+        // The key must not contain the generation id, otherwise two different
+        // images could each pass the balance check and push the account negative.
+        ArgumentCaptor<String> key = ArgumentCaptor.forClass(String.class);
+        verify(locker).tryLock(key.capture(), anyLong());
+
+        assertThat(key.getValue()).isEqualTo("privacy_unlock_" + OWNER);
+        assertThat(key.getValue()).doesNotContain(genId.toString());
     }
 
     @Test
