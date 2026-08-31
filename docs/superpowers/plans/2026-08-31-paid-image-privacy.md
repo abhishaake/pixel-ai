@@ -1255,8 +1255,10 @@ and the method next to the existing `imageAction`:
 - [ ] **Step 4: Regenerate the Retrofit client**
 
 ```bash
-dart run build_runner build --delete-conflicting-outputs
+dart run build_runner build
 ```
+
+**Do not pass `--delete-conflicting-outputs` in this repo.** `json_serializable` is not a dev dependency, so `lib/core/base_response.g.dart` is checked in but not regenerable — that flag deletes it and never brings it back, breaking every build. If it does get deleted, restore it with `git checkout -- lib/core/base_response.g.dart`.
 
 Expected: `pixel_ai_service.g.dart` regenerates with a `updateImagePrivacy` implementation. If the generator complains it cannot deserialize `ImagePrivacyData`, confirm the `fromJson` factory signature matches exactly `Map<String, dynamic>` — `Parser.JsonSerializable` requires it.
 
