@@ -21,6 +21,10 @@
 - `RLock.tryLock(key, timeout)` takes **milliseconds**, not seconds. Existing callers pass `10`. Match that.
 - Insufficient credits must throw exactly `new Error(HttpStatus.PAYMENT_REQUIRED, "Not enough credits")` so the app's existing 402 paywall path fires.
 - **Do not commit** `src/main/resources/service-account-key.json` (untracked secret) or the `.DS_Store` files. Always `git add` explicit paths, never `git add -A`.
+- **Maven must run on JDK 21.** The default `mvn` on this machine runs on Homebrew JDK 24, which this project's Lombok cannot process — every build fails with `java.lang.ExceptionInInitializerError: com.sun.tools.javac.code.TypeTag :: UNKNOWN`. This is pre-existing and unrelated to this feature. Prefix every Maven command with:
+  ```
+  export JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home
+  ```
 
 ---
 
