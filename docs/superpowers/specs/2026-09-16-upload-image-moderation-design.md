@@ -115,9 +115,15 @@ record `REJECTED` versus `ERROR`. When `failure` is true, `allowed` reflects the
    `MinConfidence`.
 4. Match returned labels against the blocklist by label name *or* by taxonomy
    parent name, comparing each against its own threshold.
-5. On `SdkException` or any unexpected failure: log `[CRITICAL]`, fire a throttled
-   alert email, and return a result with `failure=true` and `allowed` set from
-   `moderation.fail-open`.
+5. On `SdkException` or any unexpected failure: log `[CRITICAL]` and return a result
+   with `failure=true` and `allowed` set from `moderation.fail-open`.
+
+The service does not send alert emails. `SesEmailService` is annotated
+`@ConditionalOnBean(SesClient.class)` and is absent when SES is disabled; injecting it
+here would make moderation itself fail to start in that configuration. Alerting is the
+caller's job, and `GenerationsServiceImpl` already has `sesEmailService` injected. This
+also keeps the service's only outbound dependency the Rekognition client, which is what
+makes it cheap to unit test.
 
 ### Component: `RekognitionConfig`
 
@@ -235,9 +241,10 @@ User-facing rejection message:
 Neutral and non-accusatory, and it does not name the label that fired — naming it
 would teach users how to tune around the filter.
 
-Alert emails reuse `sesEmailService.sendErrorMail`, throttled to at most one every
-five minutes via an `AtomicLong` holding the last-sent timestamp, so a Rekognition
-outage cannot flood the inbox.
+Alert emails are sent from `GenerationsServiceImpl.assertUploadIsSafe`, reusing the
+already-injected `sesEmailService.sendErrorMail`, throttled to at most one every five
+minutes via an `AtomicLong` holding the last-sent timestamp, so a Rekognition outage
+cannot flood the inbox.
 
 ## Testing
 
