@@ -29,6 +29,7 @@ import com.av.pixel.enums.ImageCompressionConfig;
 import com.av.pixel.enums.ImagePrivacyEnum;
 import com.av.pixel.enums.ImageRenderOptionEnum;
 import com.av.pixel.enums.ImageStyleEnum;
+import com.av.pixel.enums.ModerationSourceEnum;
 import com.av.pixel.enums.OrderTypeEnum;
 import com.av.pixel.enums.PixelModelEnum;
 import com.av.pixel.exception.Error;
@@ -60,6 +61,7 @@ import com.av.pixel.response.ModelConfigResponse;
 import com.av.pixel.response.VideoEffectJobCountResponse;
 import com.av.pixel.response.ideogram.ImageResponse;
 import com.av.pixel.service.AdminConfigService;
+import com.av.pixel.service.ContentModerationService;
 import com.av.pixel.service.GenerationsService;
 import com.av.pixel.service.ImageCompressionService;
 import com.av.pixel.service.GenerationActionService;
@@ -121,6 +123,7 @@ public class GenerationsServiceImpl implements GenerationsService {
     private final BlockUserService blockUserService;
     private final UserCreditHelper userCreditHelper;
     private final VideoThumbnailService videoThumbnailService;
+    private final ContentModerationService contentModerationService;
 
     private static final String IMAGE_UNSAFE_LOGO = "https://av-pixel.s3.ap-south-1.amazonaws.com/image_not_safe_logo.jpeg";
 
@@ -128,6 +131,8 @@ public class GenerationsServiceImpl implements GenerationsService {
     public GenerationsDTO generate (UserDTO userDTO, GenerateRequest generateRequest, MultipartFile file) {
         log.info("generate img req {} from {}", generateRequest.getPrompt(), userDTO.getCode());
         Validator.validateGenerateRequest(generateRequest);
+        contentModerationService.assertUploadAllowed(userDTO.getCode(), file,
+                ModerationSourceEnum.IMAGE_GENERATION, isPublic(generateRequest.getPrivateImage()));
 
         String key = "generation_" + userDTO.getCode();
         boolean locked = locker.tryLock(key, 10);
@@ -232,6 +237,11 @@ public class GenerationsServiceImpl implements GenerationsService {
         if (credits == null || credits <= userCreditHelper.getDefaultUserCredit()) {
             throw new Error("The images for the given prompt may not be available on free version");
         }
+    }
+
+    /** A generation is public unless privateImage is explicitly true, matching how it is persisted. */
+    private static boolean isPublic(Boolean privateImage) {
+        return !Boolean.TRUE.equals(privateImage);
     }
 
     String safeUploadRefImage(String userCode, MultipartFile file) {
@@ -627,6 +637,9 @@ public class GenerationsServiceImpl implements GenerationsService {
         if (request.getEffect() == null || request.getEffect().isBlank()) {
             throw new Error(HttpStatus.BAD_REQUEST, "Effect is required");
         }
+
+        contentModerationService.assertUploadAllowed(userDTO.getCode(), file,
+                ModerationSourceEnum.VIDEO_EFFECT, isPublic(request.getPrivateImage()));
 
         String effectId = request.getEffect();
         String key = "generation_" + userDTO.getCode();
