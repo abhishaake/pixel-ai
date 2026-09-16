@@ -16,11 +16,13 @@ import com.av.pixel.request.VideoEffectRequest;
 import com.av.pixel.response.goenhance.GoEnhanceGenerateResponse;
 import com.av.pixel.response.goenhance.GoEnhanceJobResponse;
 import com.av.pixel.dao.Generations;
+import com.av.pixel.dao.UploadModerationLog;
 import com.av.pixel.dao.ImageFlag;
 import com.av.pixel.dao.ModelConfig;
 import com.av.pixel.dao.User;
 import com.av.pixel.dto.GenerationsDTO;
 import com.av.pixel.dto.ModelPricingDTO;
+import com.av.pixel.dto.ModerationResult;
 import com.av.pixel.dto.UserCreditDTO;
 import com.av.pixel.dto.UserDTO;
 import com.av.pixel.enums.IdeogramModelEnum;
@@ -29,6 +31,8 @@ import com.av.pixel.enums.ImageCompressionConfig;
 import com.av.pixel.enums.ImagePrivacyEnum;
 import com.av.pixel.enums.ImageRenderOptionEnum;
 import com.av.pixel.enums.ImageStyleEnum;
+import com.av.pixel.enums.ModerationDecisionEnum;
+import com.av.pixel.enums.ModerationSourceEnum;
 import com.av.pixel.enums.OrderTypeEnum;
 import com.av.pixel.enums.PixelModelEnum;
 import com.av.pixel.exception.Error;
@@ -46,6 +50,7 @@ import com.av.pixel.mapper.ModelConfigMap;
 import com.av.pixel.mapper.UserCreditMap;
 import com.av.pixel.mapper.ideogram.ImageMap;
 import com.av.pixel.repository.ImageFlagRepository;
+import com.av.pixel.repository.UploadModerationLogRepository;
 import com.av.pixel.repository.ModelConfigRepository;
 import com.av.pixel.request.GenerateRequest;
 import com.av.pixel.request.GenerationsFilterRequest;
@@ -63,6 +68,7 @@ import com.av.pixel.service.AdminConfigService;
 import com.av.pixel.service.GenerationsService;
 import com.av.pixel.service.ImageCompressionService;
 import com.av.pixel.service.GenerationActionService;
+import com.av.pixel.service.ImageModerationService;
 import com.av.pixel.service.S3Service;
 import com.av.pixel.service.SesEmailService;
 import com.av.pixel.service.UserCreditService;
@@ -94,6 +100,7 @@ import java.util.TreeSet;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 @Service
 @Slf4j
@@ -121,13 +128,19 @@ public class GenerationsServiceImpl implements GenerationsService {
     private final BlockUserService blockUserService;
     private final UserCreditHelper userCreditHelper;
     private final VideoThumbnailService videoThumbnailService;
+    private final ImageModerationService imageModerationService;
+    private final UploadModerationLogRepository uploadModerationLogRepository;
 
     private static final String IMAGE_UNSAFE_LOGO = "https://av-pixel.s3.ap-south-1.amazonaws.com/image_not_safe_logo.jpeg";
+    private static final String UPLOAD_REJECTED_MESSAGE = "This image can't be used. Please upload a different photo.";
+    private static final long MODERATION_ALERT_INTERVAL_MS = 5 * 60 * 1000L;
+    private static final AtomicLong LAST_MODERATION_ALERT_AT = new AtomicLong(0L);
 
     @Override
     public GenerationsDTO generate (UserDTO userDTO, GenerateRequest generateRequest, MultipartFile file) {
         log.info("generate img req {} from {}", generateRequest.getPrompt(), userDTO.getCode());
         Validator.validateGenerateRequest(generateRequest);
+        assertUploadIsSafe(userDTO.getCode(), file, ModerationSourceEnum.IMAGE_GENERATION);
 
         String key = "generation_" + userDTO.getCode();
         boolean locked = locker.tryLock(key, 10);
@@ -231,6 +244,78 @@ public class GenerationsServiceImpl implements GenerationsService {
     private void throwCustomUnprocessableEntityException(Integer credits, IdeogramUnprocessableEntityException e) {
         if (credits == null || credits <= userCreditHelper.getDefaultUserCredit()) {
             throw new Error("The images for the given prompt may not be available on free version");
+        }
+    }
+
+    /**
+     * Rejects restricted uploads before any work is done.
+     *
+     * <p>Called before the generation lock is acquired, so a rejection debits no
+     * credits, writes nothing to S3, and sends nothing to Ideogram or GoEnhance.
+     */
+    void assertUploadIsSafe(String userCode, MultipartFile file, ModerationSourceEnum source) {
+        if (file == null || file.isEmpty()) {
+            return;
+        }
+
+        byte[] bytes;
+        try {
+            bytes = file.getBytes();
+        } catch (Exception e) {
+            log.error("[CRITICAL] could not read upload for moderation, user={}", userCode, e);
+            recordModerationRejection(userCode, file, source, ModerationDecisionEnum.ERROR, null);
+            throw new Error(HttpStatus.UNPROCESSABLE_ENTITY, UPLOAD_REJECTED_MESSAGE);
+        }
+
+        ModerationResult result = imageModerationService.moderate(bytes);
+
+        if (result.isFailure()) {
+            alertModerationFailure(userCode, source);
+        }
+        if (result.isAllowed()) {
+            return;
+        }
+
+        ModerationDecisionEnum decision = result.isFailure()
+                ? ModerationDecisionEnum.ERROR
+                : ModerationDecisionEnum.REJECTED;
+        log.warn("upload rejected user={} source={} decision={} label={}",
+                userCode, source, decision, result.getTopLabel());
+        recordModerationRejection(userCode, file, source, decision, result);
+        throw new Error(HttpStatus.UNPROCESSABLE_ENTITY, UPLOAD_REJECTED_MESSAGE);
+    }
+
+    private void recordModerationRejection(String userCode, MultipartFile file, ModerationSourceEnum source,
+                                           ModerationDecisionEnum decision, ModerationResult result) {
+        try {
+            uploadModerationLogRepository.save(new UploadModerationLog()
+                    .setUserCode(userCode)
+                    .setSource(source)
+                    .setDecision(decision)
+                    .setTopLabel(result == null ? null : result.getTopLabel())
+                    .setTopConfidence(result == null ? null : result.getTopConfidence())
+                    .setLabels(result == null ? List.of() : result.getLabels())
+                    .setContentType(file.getContentType())
+                    .setSizeBytes(file.getSize()));
+        } catch (Exception e) {
+            // Never let an audit-write failure turn a rejection into a 500 that lets the image through.
+            log.error("could not persist upload moderation log for user={}", userCode, e);
+        }
+    }
+
+    private void alertModerationFailure(String userCode, ModerationSourceEnum source) {
+        long now = DateUtil.currentTimeMillis();
+        long last = LAST_MODERATION_ALERT_AT.get();
+        if (now - last < MODERATION_ALERT_INTERVAL_MS || !LAST_MODERATION_ALERT_AT.compareAndSet(last, now)) {
+            return;
+        }
+        try {
+            sesEmailService.sendErrorMail("[CRITICAL] image moderation unavailable"
+                    + "\n\n source : " + source
+                    + "\n\n user Code : " + userCode
+                    + "\n\n Uploads are being refused while moderation is down (fail-closed).");
+        } catch (Exception e) {
+            log.error("could not send moderation failure alert", e);
         }
     }
 
@@ -627,6 +712,8 @@ public class GenerationsServiceImpl implements GenerationsService {
         if (request.getEffect() == null || request.getEffect().isBlank()) {
             throw new Error(HttpStatus.BAD_REQUEST, "Effect is required");
         }
+
+        assertUploadIsSafe(userDTO.getCode(), file, ModerationSourceEnum.VIDEO_EFFECT);
 
         String effectId = request.getEffect();
         String key = "generation_" + userDTO.getCode();
