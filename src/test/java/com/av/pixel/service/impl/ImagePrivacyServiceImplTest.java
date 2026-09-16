@@ -9,6 +9,7 @@ import com.av.pixel.exception.Error;
 import com.av.pixel.request.UpdateImagePrivacyRequest;
 import com.av.pixel.response.ImagePrivacyResponse;
 import com.av.pixel.service.AdminConfigService;
+import com.av.pixel.service.ContentModerationService;
 import com.av.pixel.service.UserCreditService;
 import org.bson.types.ObjectId;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,6 +42,7 @@ class ImagePrivacyServiceImplTest {
     private static final String STRANGER = "P200";
 
     @Mock private MongoTemplate mongoTemplate;
+    @Mock private ContentModerationService contentModerationService;
     @Mock private UserCreditService userCreditService;
     @Mock private AdminConfigService adminConfigService;
     @Mock private RLock locker;
@@ -50,7 +52,7 @@ class ImagePrivacyServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        service = new ImagePrivacyServiceImpl(mongoTemplate, userCreditService, adminConfigService, locker);
+        service = new ImagePrivacyServiceImpl(mongoTemplate, userCreditService, adminConfigService, locker, contentModerationService);
         genId = new ObjectId();
         when(locker.tryLock(anyString(), anyLong())).thenReturn(true);
         when(adminConfigService.getPrivacyUnlockCost()).thenReturn(50);

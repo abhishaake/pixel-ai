@@ -21,11 +21,13 @@ import java.util.List;
 public class UploadModerationLog extends BaseEntity {
 
     private String userCode;
+    /** Set when an existing generation was refused on being made public. */
+    private String generationId;
     private ModerationSourceEnum source;
     private ModerationDecisionEnum decision;
     private String topLabel;
     private Double topConfidence;
     private List<String> labels;
     private String contentType;
-    private long sizeBytes;
+    private Long sizeBytes;
 }

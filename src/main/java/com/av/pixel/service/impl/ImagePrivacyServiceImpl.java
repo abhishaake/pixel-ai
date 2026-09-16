@@ -9,6 +9,7 @@ import com.av.pixel.exception.Error;
 import com.av.pixel.request.UpdateImagePrivacyRequest;
 import com.av.pixel.response.ImagePrivacyResponse;
 import com.av.pixel.service.AdminConfigService;
+import com.av.pixel.service.ContentModerationService;
 import com.av.pixel.service.ImagePrivacyService;
 import com.av.pixel.service.UserCreditService;
 import lombok.AllArgsConstructor;
@@ -32,6 +33,7 @@ public class ImagePrivacyServiceImpl implements ImagePrivacyService {
     private final UserCreditService userCreditService;
     private final AdminConfigService adminConfigService;
     private final RLock locker;
+    private final ContentModerationService contentModerationService;
 
     @Override
     public ImagePrivacyResponse updateImagePrivacy (UserDTO userDTO, UpdateImagePrivacyRequest request) {
@@ -82,6 +84,11 @@ public class ImagePrivacyServiceImpl implements ImagePrivacyService {
     }
 
     private ImagePrivacyResponse applyFree (Generations generation, boolean makePrivate, String userCode) {
+        if (!makePrivate) {
+            // Becoming publicly visible. A generation created as private was never
+            // moderated, so this is the first and only chance to check it.
+            contentModerationService.assertGenerationAllowedPublic(userCode, generation);
+        }
         generation.setPrivateImage(makePrivate);
         generation.setPrivacyUnlocked(true);
         mongoTemplate.save(generation);
