@@ -31,7 +31,7 @@ import java.util.concurrent.atomic.AtomicLong;
 @AllArgsConstructor
 public class ContentModerationServiceImpl implements ContentModerationService {
 
-    private static final String REJECTED_MESSAGE = "This image can't be used. Please upload a different photo.";
+    private static final String REJECTED_MESSAGE = "This image does not comply with our content policy. Please upload a different image.";
     private static final long ALERT_INTERVAL_MS = 5 * 60 * 1000L;
 
     private final ImageModerationService imageModerationService;

@@ -11,10 +11,10 @@ import software.amazon.awssdk.services.rekognition.RekognitionClient;
 @Configuration
 public class RekognitionConfig {
 
-    @Value("${aws.access-key}")
+    @Value("${aws.ses.access-key-id}")
     private String accessKey;
 
-    @Value("${aws.secret-key}")
+    @Value("${aws.ses.secret-access-key}")
     private String secretKey;
 
     @Value("${aws.rekognition.region:${aws.region}}")
