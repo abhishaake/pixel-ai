@@ -11,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ModerationPolicyTest {
 
     private static final String DEFAULT_BLOCKLIST =
-            "Explicit:60,Non-Explicit Nudity:75,Obstructed Intimate Parts:75,Swimwear or Underwear:80";
+            "Explicit Nudity:60";
 
     private final ModerationPolicy policy = new ModerationPolicy(DEFAULT_BLOCKLIST);
 
@@ -21,13 +21,13 @@ class ModerationPolicyTest {
                 new DetectedLabel("Exposed Female Nipple", "Explicit Nudity", 94.2d),
                 new DetectedLabel("Explicit Nudity", "Explicit", 94.2d)));
 
-        assertThat(blocked).contains("Explicit Nudity");
+        assertThat(blocked).contains("Exposed Female Nipple");
     }
 
     @Test
     void allowsBlockedLabelBelowItsThreshold() {
         Optional<String> blocked = policy.firstBlocked(List.of(
-                new DetectedLabel("Non-Explicit Nudity", "Non-Explicit Nudity of Intimate parts and Kissing", 70.0d)));
+                new DetectedLabel("Explicit Nudity", "Explicit", 55.0d)));
 
         assertThat(blocked).isEmpty();
     }
@@ -41,19 +41,36 @@ class ModerationPolicyTest {
     }
 
     @Test
-    void blocksSwimwearAtOrAboveEighty() {
+    void allowsSwimwearAndUnderwear() {
         Optional<String> blocked = policy.firstBlocked(List.of(
-                new DetectedLabel("Female Swimwear Or Underwear", "Swimwear or Underwear", 85.0d)));
+                new DetectedLabel("Female Swimwear Or Underwear", "Swimwear or Underwear", 99.0d)));
 
-        assertThat(blocked).contains("Female Swimwear Or Underwear");
+        assertThat(blocked).isEmpty();
+    }
+
+    @Test
+    void allowsNonExplicitNudityThatExposesNoPrivateParts() {
+        Optional<String> blocked = policy.firstBlocked(List.of(
+                new DetectedLabel("Bare Back", "Non-Explicit Nudity", 99.0d),
+                new DetectedLabel("Exposed Male Nipple", "Non-Explicit Nudity", 99.0d)));
+
+        assertThat(blocked).isEmpty();
+    }
+
+    @Test
+    void allowsObstructedIntimateParts() {
+        Optional<String> blocked = policy.firstBlocked(List.of(
+                new DetectedLabel("Obstructed Female Nipple", "Obstructed Intimate Parts", 99.0d)));
+
+        assertThat(blocked).isEmpty();
     }
 
     @Test
     void matchesOnParentNameWhenChildIsNotListed() {
         Optional<String> blocked = policy.firstBlocked(List.of(
-                new DetectedLabel("Sex Toys", "Explicit", 88.0d)));
+                new DetectedLabel("Exposed Male Genitalia", "Explicit Nudity", 88.0d)));
 
-        assertThat(blocked).contains("Sex Toys");
+        assertThat(blocked).contains("Exposed Male Genitalia");
     }
 
     @Test
@@ -68,10 +85,10 @@ class ModerationPolicyTest {
     @Test
     void reportsHighestConfidenceViolationFirst() {
         Optional<String> blocked = policy.firstBlocked(List.of(
-                new DetectedLabel("Non-Explicit Nudity", "Non-Explicit Nudity of Intimate parts and Kissing", 80.0d),
-                new DetectedLabel("Explicit Nudity", "Explicit", 96.0d)));
+                new DetectedLabel("Exposed Buttocks or Anus", "Explicit Nudity", 80.0d),
+                new DetectedLabel("Exposed Female Genitalia", "Explicit Nudity", 96.0d)));
 
-        assertThat(blocked).contains("Explicit Nudity");
+        assertThat(blocked).contains("Exposed Female Genitalia");
     }
 
     @Test
@@ -81,7 +98,7 @@ class ModerationPolicyTest {
 
     @Test
     void toleratesWhitespaceAndSkipsMalformedEntries() {
-        ModerationPolicy messy = new ModerationPolicy("  Explicit : 60 , garbage , Violence:notanumber , Swimwear or Underwear:80 ");
+        ModerationPolicy messy = new ModerationPolicy("  Explicit Nudity : 60 , garbage , Violence:notanumber ");
 
         assertThat(messy.lowestThreshold()).isEqualTo(60.0d);
         assertThat(messy.firstBlocked(List.of(new DetectedLabel("Explicit Nudity", "Explicit", 61.0d)))).contains("Explicit Nudity");

@@ -33,7 +33,7 @@ import static org.mockito.Mockito.when;
 class ImageModerationServiceImplTest {
 
     private static final String DEFAULT_BLOCKLIST =
-            "Explicit:60,Non-Explicit Nudity:75,Obstructed Intimate Parts:75,Swimwear or Underwear:80";
+            "Explicit Nudity:60";
 
     private static final int MAX_BYTES = 5 * 1024 * 1024;
 
@@ -104,13 +104,22 @@ class ImageModerationServiceImplTest {
     }
 
     @Test
-    void rejectsSwimwear() {
-        respondWith(label("Female Swimwear Or Underwear", "Swimwear or Underwear", 85.0f));
+    void allowsSwimwear() {
+        respondWith(label("Female Swimwear Or Underwear", "Swimwear or Underwear", 99.0f));
+
+        ModerationResult result = service(true, false).moderate(image);
+
+        assertThat(result.isAllowed()).isTrue();
+    }
+
+    @Test
+    void rejectsExposedGenitalia() {
+        respondWith(label("Exposed Female Genitalia", "Explicit Nudity", 88.0f));
 
         ModerationResult result = service(true, false).moderate(image);
 
         assertThat(result.isAllowed()).isFalse();
-        assertThat(result.getTopLabel()).isEqualTo("Female Swimwear Or Underwear");
+        assertThat(result.getTopLabel()).isEqualTo("Exposed Female Genitalia");
     }
 
     @Test

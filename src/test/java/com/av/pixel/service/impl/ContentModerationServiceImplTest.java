@@ -41,7 +41,7 @@ import static org.mockito.Mockito.when;
 class ContentModerationServiceImplTest {
 
     private static final String USER = "P100";
-    private static final String REJECTED_MESSAGE = "This image can't be used. Please upload a different photo.";
+    private static final String REJECTED_MESSAGE = "This image does not comply with our content policy. Please upload a different image.";
 
     @Mock private ImageModerationService imageModerationService;
     @Mock private UploadModerationLogRepository logRepository;
