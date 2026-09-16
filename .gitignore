@@ -31,3 +31,9 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Secrets and OS cruft ###
+# Service account keys must never be committed.
+**/service-account-key.json
+.DS_Store
+**/.DS_Store
