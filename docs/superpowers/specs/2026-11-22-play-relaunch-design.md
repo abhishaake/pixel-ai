@@ -182,7 +182,9 @@ alert mail via `SesEmailService`.
 
 The public feed queries `privateImage == false` (`ImagePrivacyEnum.DEFAULT` and
 `PUBLIC` both map to `false`), so setting it to `true` removes the generation from the
-feed. With §3 in place, a crafted request cannot bring it back.
+feed. With §3 in place, a crafted feed request cannot bring it back. The takedown also sets `reportHidden=true`, and the
+privacy toggle refuses to make a `reportHidden` generation public (422), so its owner cannot republish it either.
+Clearing `reportHidden` is a manual database operation.
 
 Distinct-reporter counting is the whole point: counting rows would let one user hide
 any post by calling the endpoint three times. A report from a user who has already
@@ -295,3 +297,7 @@ Manual verification before submission, on the build that will be uploaded:
 3. Intimate video effects are served by default. See Accepted risks 5.
 4. User codes `P108`, `P125` and `P109` receive every user's private content in the
    feed. Preserved as found; purpose undocumented.
+5. `Interceptor` accepts a client-supplied `user` JSON header as the authenticated identity without checking a
+   token. Anyone can impersonate any user code, including `P108`/`P125`/`P109`, which defeats §3 and §4 for a caller
+   outside the app. The Flutter client never sends this header. Left in place by product-owner decision on
+   2026-11-22.
