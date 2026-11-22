@@ -244,6 +244,33 @@ public class GenerationsServiceImpl implements GenerationsService {
         return !Boolean.TRUE.equals(privateImage);
     }
 
+    /** User codes that see every user's private content in the feed. Preserved as found; purpose undocumented. */
+    private static final List<String> FEED_ALL_PRIVACY_CODES = List.of("P108", "P125", "P109");
+
+    /** True only when every requested profile is the caller's own. */
+    static boolean isSelfProfile(String userCode, List<String> requestedUserCodes) {
+        return StringUtils.isNotEmpty(userCode)
+                && !CollectionUtils.isEmpty(requestedUserCodes)
+                && requestedUserCodes.stream().allMatch(userCode::equals);
+    }
+
+    /**
+     * The privacy filter the feed query actually applies. A client may ask for private
+     * content but receives it only for its own profile.
+     */
+    static ImagePrivacyEnum resolveFeedPrivacy(ImagePrivacyEnum requested, boolean isSelfProfile, String userCode) {
+        if (isSelfProfile && ImagePrivacyEnum.DEFAULT.equals(requested)) {
+            return ImagePrivacyEnum.BOTH;
+        }
+        if (StringUtils.isNotEmpty(userCode) && FEED_ALL_PRIVACY_CODES.contains(userCode)) {
+            return ImagePrivacyEnum.BOTH;
+        }
+        if (isSelfProfile) {
+            return requested;
+        }
+        return ImagePrivacyEnum.PUBLIC;
+    }
+
     String safeUploadRefImage(String userCode, MultipartFile file) {
         try{
             if ( file == null ){
@@ -407,16 +434,9 @@ public class GenerationsServiceImpl implements GenerationsService {
         String userCode = (Objects.nonNull(userDTO) && StringUtils.isNotEmpty(userDTO.getCode())) ? userDTO.getCode() : null;
 
         Validator.validateFilterImageRequest(generationsFilterRequest, "");
-        boolean isSelfProfile = StringUtils.isNotEmpty(userCode) && !CollectionUtils.isEmpty(generationsFilterRequest.getUserCodes())
-                && generationsFilterRequest.getUserCodes().contains(userCode);
-
-        ImagePrivacyEnum privacyEnum = ImagePrivacyEnum.getEnumByName(generationsFilterRequest.getPrivacy());
-
-        if (isSelfProfile && ImagePrivacyEnum.DEFAULT.equals(privacyEnum)) {
-            privacyEnum = ImagePrivacyEnum.BOTH;
-        } else if (StringUtils.isNotEmpty(userCode) && List.of("P108", "P125", "P109").contains(userCode)) {
-            privacyEnum = ImagePrivacyEnum.BOTH;
-        }
+        boolean isSelfProfile = isSelfProfile(userCode, generationsFilterRequest.getUserCodes());
+        ImagePrivacyEnum privacyEnum = resolveFeedPrivacy(
+                ImagePrivacyEnum.getEnumByName(generationsFilterRequest.getPrivacy()), isSelfProfile, userCode);
 
        if (!CollectionUtils.isEmpty(generationsFilterRequest.getStyles())) {
            generationsFilterRequest.setStyles(ImageStyleEnum.getEnumsForFilter(generationsFilterRequest.getStyles()));
