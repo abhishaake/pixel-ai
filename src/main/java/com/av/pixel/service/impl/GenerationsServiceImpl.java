@@ -16,7 +16,6 @@ import com.av.pixel.request.VideoEffectRequest;
 import com.av.pixel.response.goenhance.GoEnhanceGenerateResponse;
 import com.av.pixel.response.goenhance.GoEnhanceJobResponse;
 import com.av.pixel.dao.Generations;
-import com.av.pixel.dao.ImageFlag;
 import com.av.pixel.dao.ModelConfig;
 import com.av.pixel.dao.User;
 import com.av.pixel.dto.GenerationsDTO;
@@ -46,7 +45,6 @@ import com.av.pixel.mapper.GenerationsMap;
 import com.av.pixel.mapper.ModelConfigMap;
 import com.av.pixel.mapper.UserCreditMap;
 import com.av.pixel.mapper.ideogram.ImageMap;
-import com.av.pixel.repository.ImageFlagRepository;
 import com.av.pixel.repository.ModelConfigRepository;
 import com.av.pixel.request.GenerateRequest;
 import com.av.pixel.request.GenerationsFilterRequest;
@@ -62,6 +60,7 @@ import com.av.pixel.response.VideoEffectJobCountResponse;
 import com.av.pixel.response.ideogram.ImageResponse;
 import com.av.pixel.service.AdminConfigService;
 import com.av.pixel.service.ContentModerationService;
+import com.av.pixel.service.ReportTakedownService;
 import com.av.pixel.service.GenerationsService;
 import com.av.pixel.service.ImageCompressionService;
 import com.av.pixel.service.GenerationActionService;
@@ -116,7 +115,7 @@ public class GenerationsServiceImpl implements GenerationsService {
     private final AdminConfigService adminConfigService;
     private final S3Service s3Service;
     private final ImageCompressionService imageCompressionService;
-    private final ImageFlagRepository imageFlagRepository;
+    private final ReportTakedownService reportTakedownService;
     private final EmailService emailService;
     private final SesEmailService sesEmailService;
     private final AsyncUtil asyncUtil;
@@ -242,6 +241,33 @@ public class GenerationsServiceImpl implements GenerationsService {
     /** A generation is public unless privateImage is explicitly true, matching how it is persisted. */
     private static boolean isPublic(Boolean privateImage) {
         return !Boolean.TRUE.equals(privateImage);
+    }
+
+    /** User codes that see every user's private content in the feed. Preserved as found; purpose undocumented. */
+    private static final List<String> FEED_ALL_PRIVACY_CODES = List.of("P108", "P125", "P109");
+
+    /** True only when every requested profile is the caller's own. */
+    static boolean isSelfProfile(String userCode, List<String> requestedUserCodes) {
+        return StringUtils.isNotEmpty(userCode)
+                && !CollectionUtils.isEmpty(requestedUserCodes)
+                && requestedUserCodes.stream().allMatch(userCode::equals);
+    }
+
+    /**
+     * The privacy filter the feed query actually applies. A client may ask for private
+     * content but receives it only for its own profile.
+     */
+    static ImagePrivacyEnum resolveFeedPrivacy(ImagePrivacyEnum requested, boolean isSelfProfile, String userCode) {
+        if (isSelfProfile && ImagePrivacyEnum.DEFAULT.equals(requested)) {
+            return ImagePrivacyEnum.BOTH;
+        }
+        if (StringUtils.isNotEmpty(userCode) && FEED_ALL_PRIVACY_CODES.contains(userCode)) {
+            return ImagePrivacyEnum.BOTH;
+        }
+        if (isSelfProfile) {
+            return requested;
+        }
+        return ImagePrivacyEnum.PUBLIC;
     }
 
     String safeUploadRefImage(String userCode, MultipartFile file) {
@@ -407,16 +433,9 @@ public class GenerationsServiceImpl implements GenerationsService {
         String userCode = (Objects.nonNull(userDTO) && StringUtils.isNotEmpty(userDTO.getCode())) ? userDTO.getCode() : null;
 
         Validator.validateFilterImageRequest(generationsFilterRequest, "");
-        boolean isSelfProfile = StringUtils.isNotEmpty(userCode) && !CollectionUtils.isEmpty(generationsFilterRequest.getUserCodes())
-                && generationsFilterRequest.getUserCodes().contains(userCode);
-
-        ImagePrivacyEnum privacyEnum = ImagePrivacyEnum.getEnumByName(generationsFilterRequest.getPrivacy());
-
-        if (isSelfProfile && ImagePrivacyEnum.DEFAULT.equals(privacyEnum)) {
-            privacyEnum = ImagePrivacyEnum.BOTH;
-        } else if (StringUtils.isNotEmpty(userCode) && List.of("P108", "P125", "P109").contains(userCode)) {
-            privacyEnum = ImagePrivacyEnum.BOTH;
-        }
+        boolean isSelfProfile = isSelfProfile(userCode, generationsFilterRequest.getUserCodes());
+        ImagePrivacyEnum privacyEnum = resolveFeedPrivacy(
+                ImagePrivacyEnum.getEnumByName(generationsFilterRequest.getPrivacy()), isSelfProfile, userCode);
 
        if (!CollectionUtils.isEmpty(generationsFilterRequest.getStyles())) {
            generationsFilterRequest.setStyles(ImageStyleEnum.getEnumsForFilter(generationsFilterRequest.getStyles()));
@@ -863,16 +882,8 @@ public class GenerationsServiceImpl implements GenerationsService {
 
     @Override
     public String reportImage (UserDTO userDTO, ImageReportRequest imageReportRequest) {
-        if (Objects.isNull(imageReportRequest) || StringUtils.isEmpty(imageReportRequest.getGenId())) {
-            return "SUCCESS";
-        }
         String userCode = Objects.nonNull(userDTO) && StringUtils.isNotEmpty(userDTO.getCode()) ? userDTO.getCode() : null;
-        ImageFlag imageFlag = new ImageFlag()
-                .setGenId(imageReportRequest.getGenId())
-                .setImageId(imageReportRequest.getImageId())
-                .setReason(imageReportRequest.getReason())
-                .setUserCode(userCode);
-        imageFlagRepository.save(imageFlag);
+        reportTakedownService.report(userCode, imageReportRequest);
         return "SUCCESS";
     }
 }

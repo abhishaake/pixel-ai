@@ -1,0 +1,41 @@
+Backup of Hastara's live default store listing (en-US), taken 2026-11-22 before replacing it with Pixel AI.
+Listing: com.rishyash_studio.icc_world_cup_2024_app. Graphics (1 icon, 1 feature graphic, 6 phone screenshots) are not included.
+
+=== App name ===
+Hastara: Palm Reading & Tarot
+
+=== Short description ===
+Palmistry scanner, tarot, numerology & love compatibility - works offline.
+
+=== Full description ===
+Hastara is a small almanac: palm reading from a photograph of your own hand, tarot, horoscopes and your birth chart, all worked out on your phone. Palmistry, tarot and astrology written by people who like the traditions and dislike the hard sell - no account, nothing sent anywhere.
+
+Palmistry: palm reading from your own hand
+Pick a hand, hold it in even light and take a photo, or choose one you already have. Hastara finds the palm, traces the creases it can see and measures each for length, depth and curve: heart line, head line, life line, fate line. Your reading is written to those measurements. Not every line shows in every photograph, and when one does not, the app says so instead of inventing it. The photograph is measured and then discarded: never saved, never attached to a reading, never uploaded.
+
+Tarot: 78 cards, four spreads
+Draw One Card for a single question, Three Fates for what was, what is and what follows, The Crossroads for a decision with two doors, or the Year Wheel for a card a month. Every card reads upright or reversed, from passages written for this app.
+
+A daily horoscope for all twelve zodiac signs
+Today, this week and this month, for your sign and everybody else's, with a reference page for each zodiac sign. The daily report adds a focus for the day, a lucky colour, number and direction, and an hour-by-hour view.
+
+Your birth chart, moon sign and soul energy
+From a birth date, a birth time and a place, Hastara draws a North Indian square chart - a kundli - with houses counted from your moon's rasi, listing the moon, the sun, Rahu and Ketu by sign, degree and nakshatra. You also get your moon sign, how the four elements sit across your chart, and the numerology root number your birth date reduces to. If you do not know your birth time, say so: the app uses sunrise and marks the reading approximate.
+
+Love compatibility test
+Two names, two birth dates, one score, with a word each on emotion, conversation, trust and spark. It is for fun: no number decides who you love.
+
+Everything you keep, unchanged
+Readings are filed by date, so you can look back at what you believed then and what actually happened. Keep charts for family and friends alongside your own. A reading follows from the measurements behind it, so the same hand, or the same chart opened again, gives the same words. Saved readings keep the recipe, not the text, so new writing never rewrites what you already read. Every interpretation and illustration is original work.
+
+Somebody to ask
+Vega is the companion inside the app. Ask about a line you cannot read, a card, or the week ahead; the answer is a passage from the same written library your readings come from, written by a person and shipped inside the app. Vega says plainly when nothing is written for your question, and will not take a medical, legal or money one.
+
+What stays on your phone
+Birth details, measurements, saved readings and conversations sit on your device, and every reading works offline. Banner and occasional full-screen adverts support the free plan; they appear on the home and browse screens only - never over a reading, never on the camera, never when you tap to start a scan.
+
+What is free, and what the Almanac adds
+Free: today's horoscope for your sign, all twelve signs to browse, one palm reading and one tarot spread a day, and the love test - your first palm reading is not counted against the day. The Hastara Almanac adds palm readings with no daily limit, every tarot spread read card by card, the full vedic chart, moon sign and soul energy reports, your whole reading history, and no adverts anywhere. It comes by the week, month or year - a year opens with seven days free - or as one payment that never renews. Subscriptions renew until cancelled, at the price your store shows.
+
+For reflection, not advice
+Hastara says what a line or a card traditionally goes with. It does not predict, and nothing in it is medical, legal or financial advice. Made for ages 16 and over.
