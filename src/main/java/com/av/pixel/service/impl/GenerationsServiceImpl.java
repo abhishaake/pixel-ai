@@ -16,7 +16,6 @@ import com.av.pixel.request.VideoEffectRequest;
 import com.av.pixel.response.goenhance.GoEnhanceGenerateResponse;
 import com.av.pixel.response.goenhance.GoEnhanceJobResponse;
 import com.av.pixel.dao.Generations;
-import com.av.pixel.dao.ImageFlag;
 import com.av.pixel.dao.ModelConfig;
 import com.av.pixel.dao.User;
 import com.av.pixel.dto.GenerationsDTO;
@@ -46,7 +45,6 @@ import com.av.pixel.mapper.GenerationsMap;
 import com.av.pixel.mapper.ModelConfigMap;
 import com.av.pixel.mapper.UserCreditMap;
 import com.av.pixel.mapper.ideogram.ImageMap;
-import com.av.pixel.repository.ImageFlagRepository;
 import com.av.pixel.repository.ModelConfigRepository;
 import com.av.pixel.request.GenerateRequest;
 import com.av.pixel.request.GenerationsFilterRequest;
@@ -62,6 +60,7 @@ import com.av.pixel.response.VideoEffectJobCountResponse;
 import com.av.pixel.response.ideogram.ImageResponse;
 import com.av.pixel.service.AdminConfigService;
 import com.av.pixel.service.ContentModerationService;
+import com.av.pixel.service.ReportTakedownService;
 import com.av.pixel.service.GenerationsService;
 import com.av.pixel.service.ImageCompressionService;
 import com.av.pixel.service.GenerationActionService;
@@ -116,7 +115,7 @@ public class GenerationsServiceImpl implements GenerationsService {
     private final AdminConfigService adminConfigService;
     private final S3Service s3Service;
     private final ImageCompressionService imageCompressionService;
-    private final ImageFlagRepository imageFlagRepository;
+    private final ReportTakedownService reportTakedownService;
     private final EmailService emailService;
     private final SesEmailService sesEmailService;
     private final AsyncUtil asyncUtil;
@@ -883,16 +882,8 @@ public class GenerationsServiceImpl implements GenerationsService {
 
     @Override
     public String reportImage (UserDTO userDTO, ImageReportRequest imageReportRequest) {
-        if (Objects.isNull(imageReportRequest) || StringUtils.isEmpty(imageReportRequest.getGenId())) {
-            return "SUCCESS";
-        }
         String userCode = Objects.nonNull(userDTO) && StringUtils.isNotEmpty(userDTO.getCode()) ? userDTO.getCode() : null;
-        ImageFlag imageFlag = new ImageFlag()
-                .setGenId(imageReportRequest.getGenId())
-                .setImageId(imageReportRequest.getImageId())
-                .setReason(imageReportRequest.getReason())
-                .setUserCode(userCode);
-        imageFlagRepository.save(imageFlag);
+        reportTakedownService.report(userCode, imageReportRequest);
         return "SUCCESS";
     }
 }
