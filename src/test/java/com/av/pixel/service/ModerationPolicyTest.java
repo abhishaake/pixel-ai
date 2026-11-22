@@ -3,15 +3,17 @@ package com.av.pixel.service;
 import com.av.pixel.service.ModerationPolicy.DetectedLabel;
 import org.junit.jupiter.api.Test;
 
+import java.io.InputStream;
 import java.util.List;
 import java.util.Optional;
+import java.util.Properties;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class ModerationPolicyTest {
 
     private static final String DEFAULT_BLOCKLIST =
-            "Explicit Nudity:60";
+            "Explicit:60,Explicit Nudity:60,Explicit Sexual Activity:60,Sex Toys:60";
 
     private final ModerationPolicy policy = new ModerationPolicy(DEFAULT_BLOCKLIST);
 
@@ -89,6 +91,36 @@ class ModerationPolicyTest {
                 new DetectedLabel("Exposed Female Genitalia", "Explicit Nudity", 96.0d)));
 
         assertThat(blocked).contains("Exposed Female Genitalia");
+    }
+
+    @Test
+    void blocksExplicitSexualActivity() {
+        Optional<String> blocked = policy.firstBlocked(List.of(
+                new DetectedLabel("Explicit Sexual Activity", "Explicit", 70.0d)));
+        assertThat(blocked).contains("Explicit Sexual Activity");
+    }
+
+    @Test
+    void blocksSexToys() {
+        Optional<String> blocked = policy.firstBlocked(List.of(
+                new DetectedLabel("Sex Toys", "Explicit", 65.0d)));
+        assertThat(blocked).contains("Sex Toys");
+    }
+
+    @Test
+    void blocksThirdLevelNudityEvenWithoutAncestorLabels() {
+        Optional<String> blocked = policy.firstBlocked(List.of(
+                new DetectedLabel("Exposed Female Genitalia", "Explicit Nudity", 80.0d)));
+        assertThat(blocked).contains("Exposed Female Genitalia");
+    }
+
+    @Test
+    void shippedConfigurationMatchesTheGuardedBlocklist() throws Exception {
+        Properties shipped = new Properties();
+        try (InputStream in = getClass().getResourceAsStream("/application.properties")) {
+            shipped.load(in);
+        }
+        assertThat(shipped.getProperty("moderation.blocked-labels")).isEqualTo(DEFAULT_BLOCKLIST);
     }
 
     @Test
