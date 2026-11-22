@@ -88,6 +88,8 @@ class ReportTakedownServiceImplTest {
         assertThat(query.getValue().getQueryObject().get("_id")).isEqualTo(new ObjectId(genId));
         Document set = (Document) update.getValue().getUpdateObject().get("$set");
         assertThat(set.get("privateImage")).isEqualTo(true);
+        assertThat(set.get("reportHidden")).isEqualTo(true);
+        assertThat(query.getValue().getQueryObject().get("reportHidden")).isEqualTo(new Document("$ne", true));
         verify(sesEmailService).sendErrorMail(anyString());
     }
 
@@ -117,7 +119,7 @@ class ReportTakedownServiceImplTest {
     }
 
     @Test
-    void alreadyPrivateGenerationSendsNoAlert() {
+    void alreadyHiddenGenerationSendsNoAlert() {
         when(mongoTemplate.updateFirst(any(Query.class), any(Update.class), eq(Generations.class)))
                 .thenReturn(UpdateResult.acknowledged(1L, 0L, null));
         storedReporters("P1", "P2", "P3");

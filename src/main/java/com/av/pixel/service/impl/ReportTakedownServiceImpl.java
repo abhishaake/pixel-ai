@@ -70,9 +70,10 @@ public class ReportTakedownServiceImpl implements ReportTakedownService {
     private void hideFromFeed(String genId, long reporters) {
         try {
             Query query = new Query(Criteria.where("_id").is(new ObjectId(genId))
-                    .and("privateImage").ne(true));
+                    .and("reportHidden").ne(true));
             UpdateResult result = mongoTemplate.updateFirst(
-                    query, new Update().set("privateImage", true), Generations.class);
+                    query, new Update().set("privateImage", true).set("reportHidden", true),
+                    Generations.class);
             if (result.getModifiedCount() > 0) {
                 log.warn("generation hidden from feed after {} distinct reports, genId={}", reporters, genId);
                 alert(genId, reporters);

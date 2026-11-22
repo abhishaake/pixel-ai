@@ -66,6 +66,10 @@ public class ImagePrivacyServiceImpl implements ImagePrivacyService {
 
         boolean makePrivate = Boolean.TRUE.equals(request.getPrivateImage());
 
+        if (!makePrivate && Boolean.TRUE.equals(generation.getReportHidden())) {
+            throw new Error(HttpStatus.UNPROCESSABLE_ENTITY, "This image can't be made public.");
+        }
+
         if (isUnlocked(generation)) {
             return applyFree(generation, makePrivate, userCode);
         }

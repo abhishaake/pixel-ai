@@ -33,4 +33,5 @@ public class Generations extends BaseEntity {
     Long views;
     Boolean videoEffect;
     Boolean privacyUnlocked;
+    Boolean reportHidden;
 }

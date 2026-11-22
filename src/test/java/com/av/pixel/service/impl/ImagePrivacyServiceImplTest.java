@@ -24,6 +24,7 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.http.HttpStatus;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -201,5 +202,27 @@ class ImagePrivacyServiceImplTest {
                 .satisfies(e -> assertThat(((Error) e).getHttpStatus()).isEqualTo(HttpStatus.CONFLICT));
 
         verify(userCreditService, never()).debitUserCredit(anyString(), anyInt(), any(), anyString(), anyString());
+    }
+
+    @Test
+    void reportHiddenGenerationCannotBeMadePublic() {
+        Generations g = stored(OWNER, true, true);
+        g.setReportHidden(true);
+
+        assertThatThrownBy(() -> service.updateImagePrivacy(owner(), request(false)))
+                .isInstanceOf(Error.class)
+                .satisfies(e -> assertThat(((Error) e).getHttpStatus()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY));
+
+        verify(mongoTemplate, never()).save(any(Generations.class));
+        verify(contentModerationService, never()).assertGenerationAllowedPublic(anyString(), any(Generations.class));
+        verify(userCreditService, never()).debitUserCredit(anyString(), anyInt(), any(), anyString(), anyString());
+    }
+
+    @Test
+    void reportHiddenGenerationMayStillBeMadePrivate() {
+        Generations g = stored(OWNER, true, true);
+        g.setReportHidden(true);
+
+        assertThatCode(() -> service.updateImagePrivacy(owner(), request(true))).doesNotThrowAnyException();
     }
 }
